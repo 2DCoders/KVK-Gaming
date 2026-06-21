@@ -5,10 +5,10 @@ import {
   Mail,
   Lock,
   LogIn,
-  Dumbbell,
   X,
   CheckCircle,
-  Trophy,
+  Gamepad2,
+  Monitor,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -95,31 +95,31 @@ export default function Login() {
   };
 
   return (
-    <div className="h-screen w-screen bg-gradient-to-br from-[#2C1810] via-[#4E342E] to-[#1B0F08] relative overflow-hidden">
+    <div className="h-screen w-screen bg-gradient-to-br from-[#1A0000] via-[#2D0A0A] to-[#0D0000] relative overflow-hidden">
       {/* Animated background elements */}
       <div className="absolute inset-0 pointer-events-none">
         {/* Floating circles - Right side */}
-        <div className="absolute -top-40 -right-40 w-96 h-96 bg-yellow-500/20 rounded-full blur-3xl animate-morph"></div>
+        <div className="absolute -top-40 -right-40 w-96 h-96 bg-red-600/20 rounded-full blur-3xl animate-morph"></div>
         <div
-          className="absolute -bottom-32 -left-32 w-80 h-80 bg-orange-700/15 rounded-full blur-3xl animate-morph"
+          className="absolute -bottom-32 -left-32 w-80 h-80 bg-red-500/15 rounded-full blur-3xl animate-morph"
           style={{ animationDelay: "2s" }}
         ></div>
         <div
-          className="absolute top-1/2 left-1/3 w-64 h-64 bg-amber-400/10 rounded-full blur-3xl animate-glow-pulse"
+          className="absolute top-1/2 left-1/3 w-64 h-64 bg-rose-500/10 rounded-full blur-3xl animate-glow-pulse"
           style={{ animationDelay: "1s" }}
         ></div>
 
         {/* Floating circles - Left side (visible) */}
         <div
-          className="absolute -top-20 left-10 w-96 h-96 bg-amber-400/15 rounded-full blur-3xl animate-morph"
+          className="absolute -top-20 left-10 w-96 h-96 bg-red-400/15 rounded-full blur-3xl animate-morph"
           style={{ animationDelay: "1s" }}
         ></div>
         <div
-          className="absolute top-1/4 left-1/4 w-72 h-72 bg-yellow-600/15 rounded-full blur-3xl animate-glow-pulse"
+          className="absolute top-1/4 left-1/4 w-72 h-72 bg-red-600/15 rounded-full blur-3xl animate-glow-pulse"
           style={{ animationDelay: "2.5s" }}
         ></div>
         <div
-          className="absolute bottom-10 left-1/3 w-80 h-80 bg-yellow-500/10 rounded-full blur-3xl animate-morph"
+          className="absolute bottom-10 left-1/3 w-80 h-80 bg-red-500/10 rounded-full blur-3xl animate-morph"
           style={{ animationDelay: "3s" }}
         ></div>
       </div>
@@ -131,18 +131,18 @@ export default function Login() {
           <div className="max-w-md animate-fade-in max-h-screen overflow-y-auto pr-2">
             {/* Logo and title */}
             <div className="mb-12 flex items-center gap-4">
-              <div className="w-16 h-16 bg-gradient-to-br from-yellow-500 to-amber-700 rounded-2xl flex items-center justify-center shadow-lg hover:shadow-2xl transition-all duration-300 hover:scale-110 cursor-pointer">
-                <Trophy className="w-8 h-8 text-white" strokeWidth={2.5} />
+              <div className="w-16 h-16 bg-gradient-to-br from-red-600 to-red-800 rounded-2xl flex items-center justify-center shadow-lg hover:shadow-2xl transition-all duration-300 hover:scale-110 cursor-pointer">
+                <Gamepad2 className="w-8 h-8 text-white" strokeWidth={2.5} />
               </div>
 
               <div>
-              <h1 className="text-4xl font-bold text-white">
-                KVK Badminton
-              </h1>
+                <h1 className="text-4xl font-bold text-white">
+                  KVK Gaming
+                </h1>
 
-              <p className="text-yellow-400 font-semibold mt-1">
-                Court Management System
-              </p>
+                <p className="text-red-400 font-semibold mt-1">
+                  Gaming Center Management System
+                </p>
               </div>
             </div>
 
@@ -150,51 +150,51 @@ export default function Login() {
             <div className="space-y-8">
               <div>
                 <h2 className="text-4xl font-bold text-white leading-tight mb-6">
-                  Manage Your Badminton Arena
+                  Manage Your Gaming Center
                 </h2>
                 <p className="text-lg text-gray-300 leading-relaxed">
-                  Manage court bookings, player memberships, coaching schedules, tournaments, and payments from one powerful dashboard.
+                  Manage gaming stations, customer sessions, memberships, tournaments, and payments from one powerful dashboard.
                 </p>
               </div>
 
               {/* Features list */}
               <div className="space-y-4">
                 <div className="flex items-start gap-4">
-                  <div className="w-8 h-8 rounded-full bg-yellow-500/20 flex items-center justify-center flex-shrink-0 mt-1">
-                    <span className="text-orange-400 font-bold text-sm">✓</span>
+                  <div className="w-8 h-8 rounded-full bg-red-600/20 flex items-center justify-center flex-shrink-0 mt-1">
+                    <span className="text-red-500 font-bold text-sm">✓</span>
                   </div>
                   <div>
                     <p className="font-semibold text-white">
-                      Player & Membership Management
+                      Gaming Station Management
                     </p>
                     <p className="text-sm text-gray-400 mt-1">
-                      Track players, memberships, and attendance
+                      Track PC, console, and VR station availability
                     </p>
                   </div>
                 </div>
                 <div className="flex items-start gap-4">
-                  <div className="w-8 h-8 rounded-full bg-yellow-500/20 flex items-center justify-center flex-shrink-0 mt-1">
-                    <span className="text-orange-400 font-bold text-sm">✓</span>
+                  <div className="w-8 h-8 rounded-full bg-red-600/20 flex items-center justify-center flex-shrink-0 mt-1">
+                    <span className="text-red-500 font-bold text-sm">✓</span>
                   </div>
                   <div>
                     <p className="font-semibold text-white">
-                      Court Reservation System
+                      Session & Reservation System
                     </p>
                     <p className="text-sm text-gray-400 mt-1">
-                      Manage court availability and bookings
+                      Manage bookings, playtime, and customer sessions
                     </p>
                   </div>
                 </div>
                 <div className="flex items-start gap-4">
-                  <div className="w-8 h-8 rounded-full bg-yellow-500/20 flex items-center justify-center flex-shrink-0 mt-1">
-                    <span className="text-orange-400 font-bold text-sm">✓</span>
+                  <div className="w-8 h-8 rounded-full bg-red-600/20 flex items-center justify-center flex-shrink-0 mt-1">
+                    <span className="text-red-500 font-bold text-sm">✓</span>
                   </div>
                   <div>
                     <p className="font-semibold text-white">
-                      Tournament & Coaching Analytics
+                      Tournament & Revenue Analytics
                     </p>
                     <p className="text-sm text-gray-400 mt-1">
-                      Monitor performance and training programs
+                      Monitor tournaments, earnings, and player activity
                     </p>
                   </div>
                 </div>
@@ -206,7 +206,7 @@ export default function Login() {
               <p className="text-sm text-gray-400">
                 Developed by{" "}
                 <span className="font-semibold text-white">2D-Coders</span> |
-                &copy; 2026 KVK Badminton. All rights reserved.
+                &copy; 2026 KVK Gaming. All rights reserved.
               </p>
             </div>
           </div>
@@ -230,8 +230,8 @@ export default function Login() {
               {/* Header */}
               <div className="mb-6">
                 <div className="flex items-center gap-2 md:hidden mb-4">
-                  <div className="w-10 h-10 bg-gradient-to-br from-yellow-500 to-amber-700 rounded-xl flex items-center justify-center shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110">
-                    <Dumbbell
+                  <div className="w-10 h-10 bg-gradient-to-br from-red-600 to-red-800 rounded-xl flex items-center justify-center shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110">
+                    <Monitor
                       className="w-6 h-6 text-white"
                       strokeWidth={2.5}
                     />
@@ -259,7 +259,7 @@ export default function Login() {
                     User ID
                   </Label>
                   <div className="relative group">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-orange-500 transition-colors" />
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-red-600 transition-colors" />
                     <Input
                       id="userId"
                       name="userId"
@@ -267,7 +267,7 @@ export default function Login() {
                       placeholder="Enter your user ID"
                       value={formData.userId}
                       onChange={handleChange}
-                      className="pl-10 pr-4 bg-gray-50 border border-gray-300 rounded-lg focus:bg-white focus:border-yellow-500 focus:ring-2 focus:ring-yellow-200 transition-all duration-300 placeholder:text-gray-400 h-9 text-gray-900 hover:border-gray-400"
+                      className="pl-10 pr-4 bg-gray-50 border border-gray-300 rounded-lg focus:bg-white focus:border-red-600 focus:ring-2 focus:ring-red-200 transition-all duration-300 placeholder:text-gray-400 h-9 text-gray-900 hover:border-gray-400"
                       required
                     />
                   </div>
@@ -282,7 +282,7 @@ export default function Login() {
                     Password
                   </Label>
                   <div className="relative group">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-orange-500 transition-colors" />
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-red-600 transition-colors" />
                     <Input
                       id="password"
                       name="password"
@@ -290,7 +290,7 @@ export default function Login() {
                       placeholder="Enter your password"
                       value={formData.password}
                       onChange={handleChange}
-                      className="pl-10 pr-10 bg-gray-50 border border-gray-300 rounded-lg focus:bg-white focus:border-yellow-500 focus:ring-2 focus:ring-yellow-200 transition-all duration-300 placeholder:text-gray-400 h-9 text-gray-900 hover:border-gray-400"
+                      className="pl-10 pr-10 bg-gray-50 border border-gray-300 rounded-lg focus:bg-white focus:border-red-600 focus:ring-2 focus:ring-red-200 transition-all duration-300 placeholder:text-gray-400 h-9 text-gray-900 hover:border-gray-400"
                       required
                     />
                     <button
@@ -315,7 +315,7 @@ export default function Login() {
                   <button
                     type="button"
                     onClick={() => setShowForgotModal(true)}
-                    className="text-amber-700 cursor-pointer hover:text-amber-800 font-medium text-xs transition-colors"
+                    className="text-red-700 cursor-pointer hover:text-red-800 font-medium text-xs transition-colors"
                   >
                     Forgot password?
                   </button>
@@ -325,7 +325,7 @@ export default function Login() {
                 <Button
                   type="submit"
                   disabled={loading}
-                  className="w-full h-9 mt-6 bg-gradient-to-r cursor-pointer from-yellow-500 to-amber-700 hover:from-yellow-600 hover:to-amber-800 text-white font-semibold rounded-lg shadow-lg hover:shadow-2xl transform hover:scale-105 transition-all duration-300 flex items-center justify-center gap-2 group text-sm active:scale-95 active:shadow-md"
+                  className="w-full h-9 mt-6 bg-gradient-to-r cursor-pointer from-red-600 to-red-800 hover:from-red-700 hover:to-red-900 text-white font-semibold rounded-lg shadow-lg hover:shadow-2xl transform hover:scale-105 transition-all duration-300 flex items-center justify-center gap-2 group text-sm active:scale-95 active:shadow-md"
                 >
                   {loading ? (
                     <>
@@ -366,7 +366,7 @@ export default function Login() {
                   Don't have access?{" "}
                   <a
                     href="#"
-                    className="text-amber-700 font-semibold hover:text-amber-800 transition-colors"
+                    className="text-red-700 font-semibold hover:text-red-800 transition-colors"
                   >
                     Contact admin
                   </a>
@@ -394,16 +394,16 @@ export default function Login() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-fade-in">
           <div className="bg-white rounded-3xl shadow-2xl border border-gray-200 w-full max-w-md overflow-hidden animate-slide-up">
             {/* Modal Header */}
-            <div className="bg-gradient-to-r from-yellow-500 to-amber-700 px-6 py-6 flex items-center justify-between">
+            <div className="bg-gradient-to-r from-red-600 to-red-800 px-6 py-6 flex items-center justify-between">
               <div>
                 <h3 className="text-xl font-bold text-white">Reset Password</h3>
-                <p className="text-orange-100 text-sm mt-1">
+                <p className="text-red-100 text-sm mt-1">
                   Request password reset from super admin
                 </p>
               </div>
               <button
                 onClick={closeForgotModal}
-                className="text-white cursor-pointer hover:bg-yellow-500/30 p-2 rounded-lg transition-all duration-200"
+                className="text-white cursor-pointer hover:bg-red-500/30 p-2 rounded-lg transition-all duration-200"
               >
                 <X size={20} />
               </button>
@@ -421,14 +421,14 @@ export default function Login() {
                       Email or User ID
                     </Label>
                     <div className="relative group">
-                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-orange-500 transition-colors" />
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-red-600 transition-colors" />
                       <Input
                         id="forgotEmail"
                         type="text"
                         placeholder="Enter your email or user ID"
                         value={forgotEmail}
                         onChange={(e) => setForgotEmail(e.target.value)}
-                        className="pl-10 pr-4 bg-gray-50 border border-gray-300 rounded-lg focus:bg-white focus:border-yellow-500 focus:ring-2 focus:ring-yellow-200 transition-all duration-300 placeholder:text-gray-400 h-10 text-gray-900"
+                        className="pl-10 pr-4 bg-gray-50 border border-gray-300 rounded-lg focus:bg-white focus:border-red-600 focus:ring-2 focus:ring-red-200 transition-all duration-300 placeholder:text-gray-400 h-10 text-gray-900"
                         required
                       />
                     </div>
@@ -442,7 +442,7 @@ export default function Login() {
                     <button
                       type="submit"
                       disabled={forgotLoading}
-                      className="w-full h-10 cursor-pointer bg-gradient-to-r from-yellow-500 to-amber-700 hover:from-yellow-600 hover:to-amber-800 disabled:from-gray-400 disabled:to-gray-400 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 disabled:scale-100 transition-all duration-300 flex items-center justify-center gap-2 text-sm"
+                      className="w-full h-10 cursor-pointer bg-gradient-to-r from-red-600 to-red-800 hover:from-red-700 hover:to-red-900 disabled:from-gray-400 disabled:to-gray-400 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 disabled:scale-100 transition-all duration-300 flex items-center justify-center gap-2 text-sm"
                     >
                       {forgotLoading ? (
                         <>
