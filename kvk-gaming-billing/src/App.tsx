@@ -8,6 +8,7 @@ import PCSettings from "./pages/pc-settings"
 import PS5Settings from "./pages/ps5-settings"
 import MovieRoomsSettings from "./pages/movie-rooms-settings"
 import PoolSettings from "./pages/pool-settings"
+import Bookings from "./pages/bookings"
 
 function App() {
   return (
@@ -19,6 +20,7 @@ function App() {
       <Route element={<AdminLayout><PS5Settings /></AdminLayout>} path="/ps5-settings" />
       <Route element={<AdminLayout><MovieRoomsSettings /></AdminLayout>} path="/movie-rooms-settings" />
       <Route element={<AdminLayout><PoolSettings /></AdminLayout>} path="/pool-settings" />
+      <Route element={<AdminLayout><Bookings /></AdminLayout>} path="/bookings" />
       <Route element={<AdminLayout><Payments /></AdminLayout>} path="/payments" />
       <Route element={<AdminLayout><Dayend /></AdminLayout>} path="/dayend" />
       <Route element={<AdminLayout><SettingsPage /></AdminLayout>} path="/settings" />

@@ -1,10 +1,6 @@
-import { useLocation, useNavigate } from 'react-router-dom';
-import {
-  CheckSquare,
-  Settings,
-  ChevronDown,
-  Calendar,
-} from 'lucide-react';
+import { useLocation, useNavigate } from "react-router-dom";
+import { CheckSquare, Settings, ChevronDown, Calendar } from "lucide-react";
+import { useState } from "react";
 
 interface SidebarProps {
   isOpen: boolean;
@@ -22,7 +18,7 @@ interface NavItem {
   id: string;
   label: string;
   icon: React.ComponentType<{ size?: number; className?: string }>;
-  path: string;
+  path?: string;
   submenu: NavSubitem[] | null;
 }
 
@@ -30,57 +26,71 @@ export default function Sidebar({ isOpen, isMobile, onClose }: SidebarProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const collapsed = !isOpen && !isMobile;
-  
-  const cashier = localStorage.getItem('cashier') ? JSON.parse(localStorage.getItem('cashier') as string) : null;
+  const [openMenu, setOpenMenu] = useState<string | null>(null);
+
+  const toggleMenu = (id: string) => {
+    setOpenMenu((prev) => (prev === id ? null : id));
+  };
+
+  const isParentActive = (item: NavItem) => {
+    return (
+      item.submenu?.some((subitem) => location.pathname === subitem.path) ??
+      false
+    );
+  };
+
+  const cashier = localStorage.getItem("cashier")
+    ? JSON.parse(localStorage.getItem("cashier") as string)
+    : null;
 
   const navItems: NavItem[] = [
     {
-      id: 'pc-settings',
-      label: 'PC Settings',
+      id: "system-settings",
+      label: "System Settings",
       icon: Settings,
-      path: '/pc-settings',
-      submenu: null,
+      path: "",
+      submenu: [
+        {
+          id: "pc-settings",
+          label: "PC Settings",
+          path: "/pc-settings",
+        },
+        {
+          id: "ps5-settings",
+          label: "PS5 Settings",
+          path: "/ps5-settings",
+        },
+        {
+          id: "pool-settings",
+          label: "Pool Settings",
+          path: "/pool-settings",
+        },
+        {
+          id: "movie-room-settings",
+          label: "Movie Room Settings",
+          path: "/movie-rooms-settings",
+        },
+      ],
     },
     {
-      id: 'ps5-settings',
-      label: 'PS5 Settings',
-      icon: Settings,
-      path: '/ps5-settings',
-      submenu: null,
-    },
-    {
-      id: 'pool-settings',
-      label: 'Pool Settings',
-      icon: Settings,
-      path: '/pool-settings',
-      submenu: null,
-    },
-    {
-      id: 'movie-room-settings',
-      label: 'Movie Room Settings',
-      icon: Settings,
-      path: '/movie-rooms-settings',
-      submenu: null,
-    },
-    {
-      id: 'bookings',
-      label: 'Bookings',
+      id: "bookings",
+      label: "Bookings",
       icon: Calendar,
-      path: '/bookings',
+      path: "/bookings",
       submenu: null,
     },
     {
-      id: 'dayend',
-      label: 'Day end',
+      id: "dayend",
+      label: "Day end",
       icon: CheckSquare,
-      path: '/dayend',
+      path: "/dayend",
       submenu: null,
     },
     {
-      id: 'settings',
-      label: 'Settings',
+      id: "settings",
+      label: "Settings",
       icon: Settings,
-      path: '/settings',
+      path: "/settings",
       submenu: null,
     },
   ];
@@ -102,10 +112,9 @@ export default function Sidebar({ isOpen, isMobile, onClose }: SidebarProps) {
   return (
     <>
       <aside
-        className={`${isMobile ? 'fixed inset-y-0 left-0 z-40' : 'relative'} h-full w-full bg-white border-r border-gray-200 shadow-[0_0_0_1px_rgba(15,23,42,0.03)] transition-all duration-300 ease-in-out ${isMobile ? (isOpen ? 'translate-x-0' : '-translate-x-full') : ''} overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent`}
+        className={`${isMobile ? "fixed inset-y-0 left-0 z-40" : "relative"} h-full w-full bg-white border-r border-gray-200 shadow-[0_0_0_1px_rgba(15,23,42,0.03)] transition-all duration-300 ease-in-out ${isMobile ? (isOpen ? "translate-x-0" : "-translate-x-full") : ""} overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent`}
       >
         <div className="flex flex-col h-full">
-
           {/* Brand Header */}
           <div className="px-4 pt-4 pb-3 border-b border-gray-100">
             <div className="flex items-center gap-3">
@@ -114,7 +123,9 @@ export default function Sidebar({ isOpen, isMobile, onClose }: SidebarProps) {
               </div>
               {!collapsed && (
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold text-gray-900 truncate">KVK Badminton System</p>
+                  <p className="text-sm font-semibold text-gray-900 truncate">
+                    KVK Badminton System
+                  </p>
                   <p className="text-xs text-gray-500">Cashier Panel</p>
                 </div>
               )}
@@ -125,37 +136,73 @@ export default function Sidebar({ isOpen, isMobile, onClose }: SidebarProps) {
           <nav className="flex-1 px-3 py-3 space-y-1">
             {navItems.map((item) => {
               const Icon = item.icon;
-              const active = isActive(item.path);
+              const active = item.submenu
+                ? isParentActive(item)
+                : isActive(item.path || "");
 
-              const btnBase = `w-full flex items-center ${collapsed ? 'justify-center' : 'justify-between'} ${collapsed ? 'px-2' : 'px-3'} py-1.5 rounded-xl transition-colors duration-150`;
-              const iconWrapper = `${active ? 'bg-red-600 text-white' : 'text-gray-400'} w-8 h-8 flex items-center justify-center rounded-lg transition`;
+              const isOpen = openMenu === item.id;
+
+              const btnBase = `w-full flex items-center ${collapsed ? "justify-center" : "justify-between"} ${collapsed ? "px-2" : "px-3"} py-1.5 rounded-xl transition-colors duration-150`;
+              const iconWrapper = `${active ? "bg-red-600 text-white" : "text-gray-400"} w-8 h-8 flex items-center justify-center rounded-lg transition`;
 
               return (
                 <div key={item.id}>
                   <button
-                    onClick={() => handleNavigation(item.path)}
-                    className={`${btnBase} cursor-pointer ${active && !collapsed ? 'bg-red-50 text-red-700 shadow-sm' : 'text-gray-700 hover:bg-gray-50'}`}
+                    onClick={() =>
+                      item.submenu
+                        ? toggleMenu(item.id)
+                        : handleNavigation(item.path!)
+                    }
+                    className={`${btnBase} cursor-pointer ${
+                      active && !collapsed
+                        ? "bg-red-50 text-red-700 shadow-sm"
+                        : "text-gray-700 hover:bg-gray-50"
+                    }`}
                   >
-                    <div className={`flex items-center gap-3 ${collapsed ? 'justify-center' : ''}`}>
+                    <div
+                      className={`flex items-center gap-3 ${
+                        collapsed ? "justify-center" : ""
+                      }`}
+                    >
                       <span className={iconWrapper}>
                         <Icon size={16} />
                       </span>
-                      {!collapsed && <span className={`text-sm ${active ? 'text-red-700 font-semibold' : 'text-gray-700'}`}>{item.label}</span>}
+
+                      {!collapsed && (
+                        <span
+                          className={`text-sm ${
+                            active
+                              ? "text-red-700 font-semibold"
+                              : "text-gray-700"
+                          }`}
+                        >
+                          {item.label}
+                        </span>
+                      )}
                     </div>
-                    {!collapsed && item.submenu && <ChevronDown size={16} className="text-gray-400" />}
+
+                    {!collapsed && item.submenu && (
+                      <ChevronDown
+                        size={16}
+                        className={`text-gray-400 transition-transform ${
+                          isOpen ? "rotate-180" : ""
+                        }`}
+                      />
+                    )}
                   </button>
 
                   {/* Submenu */}
-                  {item.submenu && (
-                    <div className="ml-3 space-y-1 animate-slide-up">
+                  {item.submenu && isOpen && !collapsed && (
+                    <div className="ml-11 mt-1 space-y-1">
                       {item.submenu.map((subitem) => (
                         <button
                           key={subitem.id}
                           onClick={() => handleNavigation(subitem.path)}
-                          className={`w-full text-left px-4 py-2 text-sm rounded-lg transition-all duration-200 ${isActive(subitem.path)
-                            ? 'bg-blue-50 text-blue-700 font-medium'
-                            : 'text-gray-600 hover:bg-gray-50'
-                            }`}
+                          className={`w-full text-left px-3 py-2 text-sm rounded-lg transition cursor-pointer ${
+                            isActive(subitem.path)
+                              ? "bg-red-50 text-red-700 font-medium"
+                              : "text-gray-600 hover:bg-gray-50"
+                          }`}
                         >
                           {subitem.label}
                         </button>
@@ -170,17 +217,22 @@ export default function Sidebar({ isOpen, isMobile, onClose }: SidebarProps) {
           {/* Footer */}
           <div className="mt-auto px-4 pb-4 pt-3 border-t border-gray-100 space-y-3">
             <div className="flex items-center gap-2 text-xs text-emerald-600">
-              {!collapsed && <span className="h-2 w-2 rounded-full bg-emerald-500"></span>}
+              {!collapsed && (
+                <span className="h-2 w-2 rounded-full bg-emerald-500"></span>
+              )}
               {!collapsed && <span>System online</span>}
             </div>
 
             {!collapsed && (
               <div className="flex items-center gap-3 rounded-2xl border border-gray-200 bg-gray-50 px-3 py-3 shadow-sm">
                 <div className="w-8 h-8 rounded-full bg-red-100 text-red-700 flex items-center justify-center text-xs font-semibold">
-                  {cashier?.firstName?.charAt(0)}{cashier?.lastName?.charAt(0)}
+                  {cashier?.firstName?.charAt(0)}
+                  {cashier?.lastName?.charAt(0)}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-gray-900 truncate">{cashier?.firstName} {cashier?.lastName}</p>
+                  <p className="text-sm font-semibold text-gray-900 truncate">
+                    {cashier?.firstName} {cashier?.lastName}
+                  </p>
                   <p className="text-xs text-gray-500">{cashier?.email}</p>
                 </div>
               </div>
@@ -188,8 +240,9 @@ export default function Sidebar({ isOpen, isMobile, onClose }: SidebarProps) {
 
             {collapsed && (
               <div className="w-8 h-8 rounded-full bg-red-100 text-red-700 flex items-center justify-center text-xs font-semibold">
-                  {cashier?.firstName?.charAt(0)}{cashier?.lastName?.charAt(0)}
-                </div>
+                {cashier?.firstName?.charAt(0)}
+                {cashier?.lastName?.charAt(0)}
+              </div>
             )}
           </div>
         </div>
