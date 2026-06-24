@@ -1,14 +1,13 @@
 import { Route, Routes, Navigate } from "react-router-dom"
 import Login from "./pages/login"
-import Trainers from "./pages/trainers"
 import Payments from "./pages/payments"
-import Reports from "./pages/reports"
 import SettingsPage from "./pages/settings"
 import AdminLayout from "./layouts/admin-layout"
 import Dayend from "./pages/dayend"
-import Daypass from "./pages/daypass"
-import Bookings from "./pages/bookings"
-import CourtSettings from "./pages/court-settings"
+import PCSettings from "./pages/pc-settings"
+import PS5Settings from "./pages/ps5-settings"
+import MovieRoomsSettings from "./pages/movie-rooms-settings"
+import PoolSettings from "./pages/pool-settings"
 
 function App() {
   return (
@@ -16,13 +15,12 @@ function App() {
       <Route path="/" element={<Login />} />
       
       {/* Admin Dashboard Routes */}
-      <Route element={<AdminLayout><CourtSettings /></AdminLayout>} path="/court-settings" />
-      <Route element={<AdminLayout><Bookings /></AdminLayout>} path="/bookings" />
-      <Route element={<AdminLayout><Trainers /></AdminLayout>} path="/trainers" />
-      <Route element={<AdminLayout><Daypass /></AdminLayout>} path="/daypass" />
+      <Route element={<AdminLayout><PCSettings /></AdminLayout>} path="/pc-settings" />
+      <Route element={<AdminLayout><PS5Settings /></AdminLayout>} path="/ps5-settings" />
+      <Route element={<AdminLayout><MovieRoomsSettings /></AdminLayout>} path="/movie-rooms-settings" />
+      <Route element={<AdminLayout><PoolSettings /></AdminLayout>} path="/pool-settings" />
       <Route element={<AdminLayout><Payments /></AdminLayout>} path="/payments" />
       <Route element={<AdminLayout><Dayend /></AdminLayout>} path="/dayend" />
-      <Route element={<AdminLayout><Reports /></AdminLayout>} path="/reports" />
       <Route element={<AdminLayout><SettingsPage /></AdminLayout>} path="/settings" />
       
       {/* Redirect to dashboard */}

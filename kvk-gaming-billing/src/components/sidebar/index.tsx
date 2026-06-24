@@ -35,10 +35,31 @@ export default function Sidebar({ isOpen, isMobile, onClose }: SidebarProps) {
 
   const navItems: NavItem[] = [
     {
-      id: 'court-settings',
-      label: 'Court Settings',
+      id: 'pc-settings',
+      label: 'PC Settings',
       icon: Settings,
-      path: '/court-settings',
+      path: '/pc-settings',
+      submenu: null,
+    },
+    {
+      id: 'ps5-settings',
+      label: 'PS5 Settings',
+      icon: Settings,
+      path: '/ps5-settings',
+      submenu: null,
+    },
+    {
+      id: 'pool-settings',
+      label: 'Pool Settings',
+      icon: Settings,
+      path: '/pool-settings',
+      submenu: null,
+    },
+    {
+      id: 'movie-room-settings',
+      label: 'Movie Room Settings',
+      icon: Settings,
+      path: '/movie-rooms-settings',
       submenu: null,
     },
     {
