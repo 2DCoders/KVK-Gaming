@@ -153,7 +153,7 @@ export default function Login() {
                   Manage Your Gaming Center
                 </h2>
                 <p className="text-lg text-gray-300 leading-relaxed">
-                  Manage gaming stations, customer sessions, memberships, tournaments, and payments from one powerful dashboard.
+                  Manage gaming stations and payments from one powerful dashboard.
                 </p>
               </div>
 

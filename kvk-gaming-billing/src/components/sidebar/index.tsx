@@ -1,12 +1,8 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
-  Users,
-  Dumbbell,
-  CreditCard,
   CheckSquare,
   Settings,
   ChevronDown,
-  Ticket,
   Calendar,
 } from 'lucide-react';
 
@@ -92,7 +88,7 @@ export default function Sidebar({ isOpen, isMobile, onClose }: SidebarProps) {
           {/* Brand Header */}
           <div className="px-4 pt-4 pb-3 border-b border-gray-100">
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-lg bg-amber-600 text-white flex items-center justify-center shadow-sm">
+              <div className="w-9 h-9 rounded-lg bg-red-600 text-white flex items-center justify-center shadow-sm">
                 <span className="text-xs font-bold">KVK</span>
               </div>
               {!collapsed && (
@@ -111,19 +107,19 @@ export default function Sidebar({ isOpen, isMobile, onClose }: SidebarProps) {
               const active = isActive(item.path);
 
               const btnBase = `w-full flex items-center ${collapsed ? 'justify-center' : 'justify-between'} ${collapsed ? 'px-2' : 'px-3'} py-1.5 rounded-xl transition-colors duration-150`;
-              const iconWrapper = `${active ? 'bg-amber-600 text-white' : 'text-gray-400'} w-8 h-8 flex items-center justify-center rounded-lg transition`;
+              const iconWrapper = `${active ? 'bg-red-600 text-white' : 'text-gray-400'} w-8 h-8 flex items-center justify-center rounded-lg transition`;
 
               return (
                 <div key={item.id}>
                   <button
                     onClick={() => handleNavigation(item.path)}
-                    className={`${btnBase} cursor-pointer ${active && !collapsed ? 'bg-amber-50 text-amber-700 shadow-sm' : 'text-gray-700 hover:bg-gray-50'}`}
+                    className={`${btnBase} cursor-pointer ${active && !collapsed ? 'bg-red-50 text-red-700 shadow-sm' : 'text-gray-700 hover:bg-gray-50'}`}
                   >
                     <div className={`flex items-center gap-3 ${collapsed ? 'justify-center' : ''}`}>
                       <span className={iconWrapper}>
                         <Icon size={16} />
                       </span>
-                      {!collapsed && <span className={`text-sm ${active ? 'text-amber-700 font-semibold' : 'text-gray-700'}`}>{item.label}</span>}
+                      {!collapsed && <span className={`text-sm ${active ? 'text-red-700 font-semibold' : 'text-gray-700'}`}>{item.label}</span>}
                     </div>
                     {!collapsed && item.submenu && <ChevronDown size={16} className="text-gray-400" />}
                   </button>
@@ -159,7 +155,7 @@ export default function Sidebar({ isOpen, isMobile, onClose }: SidebarProps) {
 
             {!collapsed && (
               <div className="flex items-center gap-3 rounded-2xl border border-gray-200 bg-gray-50 px-3 py-3 shadow-sm">
-                <div className="w-8 h-8 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center text-xs font-semibold">
+                <div className="w-8 h-8 rounded-full bg-red-100 text-red-700 flex items-center justify-center text-xs font-semibold">
                   {cashier?.firstName?.charAt(0)}{cashier?.lastName?.charAt(0)}
                 </div>
                 <div className="min-w-0 flex-1">
@@ -170,7 +166,7 @@ export default function Sidebar({ isOpen, isMobile, onClose }: SidebarProps) {
             )}
 
             {collapsed && (
-              <div className="w-8 h-8 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center text-xs font-semibold">
+              <div className="w-8 h-8 rounded-full bg-red-100 text-red-700 flex items-center justify-center text-xs font-semibold">
                   {cashier?.firstName?.charAt(0)}{cashier?.lastName?.charAt(0)}
                 </div>
             )}

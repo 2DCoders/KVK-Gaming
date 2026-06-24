@@ -95,7 +95,7 @@ export default function Navbar({
           <div ref={accountMenuRef} className="relative">
             <button
               onClick={() => setAccountMenuOpen((current) => !current)}
-              className="w-10 h-10 cursor-pointer rounded-full bg-orange-100 text-orange-700 flex items-center justify-center text-xs font-semibold shadow-sm ring-0 transition hover:bg-orange-200"
+              className="w-10 h-10 cursor-pointer rounded-full bg-red-100 text-red-700 flex items-center justify-center text-xs font-semibold shadow-sm ring-0 transition hover:bg-red-200"
               aria-label="Open account menu"
               aria-expanded={accountMenuOpen}
               aria-haspopup="menu"
