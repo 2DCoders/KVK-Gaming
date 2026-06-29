@@ -1,5 +1,6 @@
 import { Alert } from "@/components/ui/alert";
 import { createGamingStation, getGamingStationsByCategory, updateGamingStation } from "@/services/gaming-stations-api";
+import { createSlotConfiguration, getSlotConfigurationByCategory } from "@/services/slots-api";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
@@ -22,6 +23,7 @@ export default function PCSettings() {
   const [endTime, setEndTime] = useState("22:00");
   const [duration, setDuration] = useState(60);
   const [gap, setGap] = useState(0);
+  const [isConfigure, setIsConfigure] = useState(false);
 
   const categories = localStorage.getItem("categories")
     ? JSON.parse(localStorage.getItem("categories") as string)
@@ -57,10 +59,6 @@ export default function PCSettings() {
       });
     }
   }
-
-  useEffect(() => {
-    handleGetPCs();
-  }, [pcCategoryId]);
 
   const handleCreatePC = async () => {
     if (!pcCategoryId) {
@@ -152,6 +150,82 @@ export default function PCSettings() {
     }
   }
 
+  const handleGetSlotConfiguration = async () => {
+    if (!pcCategoryId) {
+      setPageAlert({
+        visible: true,
+        variant: "error",
+        title: "Error",
+        description: "PC category not found. Please ensure it exists.",
+      });
+      return;
+    }
+
+    try {
+      const response = await getSlotConfigurationByCategory(pcCategoryId);
+      console.log("Fetched slot configuration:", response);
+      setStartTime(response.startTime);
+      setEndTime(response.endTime);
+      setDuration(response.duration);
+      setGap(response.gap);
+      setIsConfigure(true);
+    } catch (error) {
+      setStartTime("09:00");
+      setEndTime("22:00");
+      setDuration(60);
+      setGap(0);
+      setIsConfigure(false);
+    }
+  }
+
+  const handleCreateSlotConfiguration = async () => {
+    if (!pcCategoryId) {
+      setPageAlert({
+        visible: true,
+        variant: "error",
+        title: "Error",
+        description: "PC category not found. Please ensure it exists.",
+      });
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      await createSlotConfiguration({
+        gamingCategoryId: pcCategoryId,
+        startTime,
+        endTime,
+        slotDurationMinutes: duration,
+        slotGapMinutes: gap,
+        isActive: 1,
+      });
+
+      setPageAlert({
+        visible: true,
+        variant: "success",
+        title: "Slot Configuration Created",
+        description: "The slot configuration has been created successfully."
+      });
+      handleGetSlotConfiguration();
+    } catch (error) {
+      console.error("Error creating slot configuration:", error);
+      setPageAlert({
+        visible: true,
+        variant: "error",
+        title: "Error",
+        description: "Failed to create slot configuration."
+      });
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    handleGetPCs();
+    handleGetSlotConfiguration();
+  }, [pcCategoryId]);
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 space-y-6">
 
@@ -186,7 +260,7 @@ export default function PCSettings() {
         <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-200 p-6">
           <h2 className="font-semibold mb-6">PC Configuration</h2>
 
-          <div className="space-y-5">
+          <div className="space-y-5 grid md:grid-cols-2 gap-5">
             <div>
               <label className="text-sm text-gray-600 block mb-2">
                 PC Name
@@ -352,6 +426,12 @@ export default function PCSettings() {
           <h2 className="font-semibold">PC Slot Configuration</h2>
         </div>
 
+        {!isConfigure ? (
+          <div className="text-center py-10">
+            <p className="text-gray-500">No slot configuration available.Create a new slot configuration to get started.</p>
+          </div>
+        ) : null}
+
         <div className="grid md:grid-cols-2 gap-5">
           <div>
             <label className="text-sm text-gray-600 block mb-2">
@@ -405,8 +485,12 @@ export default function PCSettings() {
         </div>
 
         <div className="flex justify-end mt-6">
-          <button
-            className="
+          {!isConfigure ? (
+            <button
+              onClick={() => {
+                handleCreateSlotConfiguration();
+              }}
+              className="
           h-11 px-5 rounded-xl
           bg-gradient-to-r
           from-red-500
@@ -414,9 +498,26 @@ export default function PCSettings() {
           to-red-700
           text-white
         "
-          >
-            Create Slot
-          </button>
+            >
+              Create Configuration
+            </button>
+          ) : (
+            <button
+              onClick={() => {
+                handleCreateSlotConfiguration();
+              }}
+              className="
+          h-11 px-5 rounded-xl
+          bg-gradient-to-r
+          from-red-500
+          via-red-600
+          to-red-700
+          text-white
+        "
+            >
+              Update Configuration
+            </button>
+          )}
         </div>
       </div>
     </div>

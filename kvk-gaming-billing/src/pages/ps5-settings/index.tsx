@@ -1,19 +1,254 @@
-import { useState } from "react";
+import { Alert } from "@/components/ui/alert";
+import { createGamingStation, getGamingStationsByCategory, updateGamingStation } from "@/services/gaming-stations-api";
+import { createSlotConfiguration, getSlotConfigurationByCategory } from "@/services/slots-api";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 
 export default function PS5Settings() {
   const [PS5s, setPS5s] = useState<any[]>([]);
   const [selectedPS5, setSelectedPS5] = useState<any>(null);
+  const [pageAlert, setPageAlert] = useState<{
+    visible: boolean;
+    variant?: "success" | "error" | "warning" | "info";
+    title?: string;
+    description?: string;
+  }>({ visible: false });
 
+  const [loading, setLoading] = useState(false);
   const [name, setName] = useState("");
+  const [price, setPrice] = useState(0);
   const [status, setStatus] = useState(true);
 
   const [startTime, setStartTime] = useState("09:00");
   const [endTime, setEndTime] = useState("22:00");
   const [duration, setDuration] = useState(60);
   const [gap, setGap] = useState(0);
+  const [isConfigure, setIsConfigure] = useState(false);
+
+  const categories = localStorage.getItem("categories")
+    ? JSON.parse(localStorage.getItem("categories") as string)
+    : [];
+
+  const PS5Category = categories.find(
+    (category: any) => category.name === "PS5"
+  );
+
+  const PS5CategoryId = PS5Category?.id;
+
+  const handleGetPS5s = async () => {
+    if (!PS5CategoryId) {
+      setPageAlert({
+        visible: true,
+        variant: "error",
+        title: "Error",
+        description: "PS5 category not found. Please ensure it exists.",
+      });
+      return;
+    }
+
+    try {
+      const response = await getGamingStationsByCategory(PS5CategoryId);
+      setPS5s(response);
+    } catch (error) {
+      console.error("Error fetching PS5s:", error);
+      setPageAlert({
+        visible: true,
+        variant: "error",
+        title: "Error",
+        description: "Failed to fetch PS5s.",
+      });
+    }
+  }
+
+  const handleCreatePS5 = async () => {
+    if (!PS5CategoryId) {
+      setPageAlert({
+        visible: true,
+        variant: "error",
+        title: "Error",
+        description: "PS5 category not found. Please ensure it exists.",
+      });
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const response = await createGamingStation({
+        name,
+        gamingCategoryId: PS5CategoryId,
+        isActive: status,
+        stationCode: name.toUpperCase().replace(/\s+/g, "_"),
+        price,
+      });
+      console.log("PS5 created successfully:", response);
+      setPageAlert({
+        visible: true,
+        variant: "success",
+        title: "PS5 Created",
+        description: "The PS5 has been created successfully."
+      });
+      setName("");
+      setPrice(0);
+      setStatus(true);
+      handleGetPS5s();
+    } catch (error) {
+      console.error("Error creating PS5:", error);
+      setPageAlert({
+        visible: true,
+        variant: "error",
+        title: "Error",
+        description: "Failed to create PS5."
+      });
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const handleUpdatePS5 = async () => {
+    if (!selectedPS5) {
+      setPageAlert({
+        visible: true,
+        variant: "error",
+        title: "Error",
+        description: "No PS5 selected for update.",
+      });
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      await updateGamingStation({
+        id: selectedPS5.id,
+        gamingCategoryId: PS5CategoryId,
+        stationCode: selectedPS5.stationCode,
+        name,
+        isActive: status,
+        price,
+      });
+      setPageAlert({
+        visible: true,
+        variant: "success",
+        title: "PS5 Updated",
+        description: "The PS5 has been updated successfully."
+      });
+      setSelectedPS5(null);
+      setName("");
+      setPrice(0);
+      setStatus(true);
+      handleGetPS5s();
+    } catch (error) {
+      setPageAlert({
+        visible: true,
+        variant: "error",
+        title: "Error",
+        description: "Failed to update PS5."
+      });
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const handleGetSlotConfiguration = async () => {
+    if (!PS5CategoryId) {
+      setPageAlert({
+        visible: true,
+        variant: "error",
+        title: "Error",
+        description: "PS5 category not found. Please ensure it exists.",
+      });
+      return;
+    }
+
+    try {
+      const response = await getSlotConfigurationByCategory(PS5CategoryId);
+      console.log("Fetched slot configuration:", response);
+      setStartTime(response.startTime);
+      setEndTime(response.endTime);
+      setDuration(response.duration);
+      setGap(response.gap);
+      setIsConfigure(true);
+    } catch (error) {
+      setStartTime("09:00");
+      setEndTime("22:00");
+      setDuration(60);
+      setGap(0);
+      setIsConfigure(false);
+    }
+  }
+
+  const handleCreateSlotConfiguration = async () => {
+    if (!PS5CategoryId) {
+      setPageAlert({
+        visible: true,
+        variant: "error",
+        title: "Error",
+        description: "PS5 category not found. Please ensure it exists.",
+      });
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      await createSlotConfiguration({
+        gamingCategoryId: PS5CategoryId,
+        startTime,
+        endTime,
+        slotDurationMinutes: duration,
+        slotGapMinutes: gap,
+        isActive: 1,
+      });
+
+      setPageAlert({
+        visible: true,
+        variant: "success",
+        title: "Slot Configuration Created",
+        description: "The slot configuration has been created successfully."
+      });
+      handleGetSlotConfiguration();
+    } catch (error) {
+      console.error("Error creating slot configuration:", error);
+      setPageAlert({
+        visible: true,
+        variant: "error",
+        title: "Error",
+        description: "Failed to create slot configuration."
+      });
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    handleGetPS5s();
+    handleGetSlotConfiguration();
+  }, [PS5CategoryId]);
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 space-y-6">
+
+      {pageAlert.visible && (
+        <div>
+          <Alert
+            variant={pageAlert.variant as any}
+            title={pageAlert.title}
+            description={pageAlert.description}
+            onClose={() => setPageAlert((s) => ({ ...s, visible: false }))}
+          />
+        </div>
+      )}
+
+      {loading && createPortal(
+        <div className="fixed inset-0 z-[9999999999] flex items-center justify-center bg-black/60 backdrop-blur-md">
+          <div className="flex flex-col items-center gap-3">
+            <div className="h-14 w-14 animate-spin rounded-full border-4 border-white/30 border-t-white"></div>
+            <p className="text-sm text-white font-medium">Loading</p>
+          </div>
+        </div>,
+        document.body
+      )}
       {/* Header */}
       <div>
         <h1 className="text-2xl font-semibold">PS5 Settings</h1>
@@ -25,7 +260,7 @@ export default function PS5Settings() {
         <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-200 p-6">
           <h2 className="font-semibold mb-6">PS5 Configuration</h2>
 
-          <div className="space-y-5">
+          <div className="space-y-5 grid md:grid-cols-2 gap-5">
             <div>
               <label className="text-sm text-gray-600 block mb-2">
                 PS5 Name
@@ -34,7 +269,6 @@ export default function PS5Settings() {
               <input
                 type="text"
                 value={name}
-                disabled={selectedPS5}
                 onChange={(e) => setName(e.target.value)}
                 className="w-full h-11 rounded-xl border border-gray-200 px-3"
               />
@@ -46,9 +280,8 @@ export default function PS5Settings() {
 
               <input
                 type="text"
-                value={name}
-                disabled={selectedPS5}
-                onChange={(e) => setName(e.target.value)}
+                value={price}
+                onChange={(e) => setPrice(parseFloat(e.target.value) || 0)}
                 className="w-full h-11 rounded-xl border border-gray-200 px-3"
               />
             </div>
@@ -76,8 +309,31 @@ export default function PS5Settings() {
 
             <div className="flex justify-end">
               {selectedPS5 ? (
-                <button
-                  className="
+                <>
+                  {/* need reset button */}
+                  <button
+                    onClick={() => {
+                      setSelectedPS5(null);
+                      setName("");
+                      setPrice(0);
+                      setStatus(true);
+                    }}
+                    className="
+                h-11 px-5 rounded-xl
+                cursor-pointer
+                bg-gray-200
+                text-gray-700
+                mr-3
+              "
+                  >
+                    Reset
+                  </button>
+                  <button
+                    onClick={() => {
+                      handleUpdatePS5();
+                    }}
+                    disabled={!name || !price}
+                    className="
                 h-11 px-5 rounded-xl
                 cursor-pointer
                 bg-gradient-to-r
@@ -85,12 +341,19 @@ export default function PS5Settings() {
                 via-red-600
                 to-red-700
                 text-white
+                disabled:opacity-50
               "
-                >
-                  Update Status
-                </button>
+                  >
+                    Update PS5
+                  </button>
+                </>
+
               ) : (
                 <button
+                  onClick={() => {
+                    handleCreatePS5();
+                  }}
+                  disabled={!name || !price}
                   className="
                 h-11 px-5 rounded-xl
                 cursor-pointer
@@ -99,6 +362,7 @@ export default function PS5Settings() {
                 via-red-600
                 to-red-700
                 text-white
+                disabled:opacity-50
               "
                 >
                   Create PS5
@@ -121,17 +385,18 @@ export default function PS5Settings() {
                 onClick={() => {
                   setSelectedPS5(PS5);
                   setName(PS5.name);
-                  setStatus(PS5.status === 1);
+                  setPrice(PS5.price);
+                  setStatus(PS5.isActive);
                 }}
                 className={`
               w-full p-3 rounded-xl border
               text-left transition-all
+              cursor-pointer
               hover:bg-gray-50
-              ${
-                selectedPS5?.id === PS5.id
-                  ? "border-amber-500 bg-amber-50"
-                  : "border-gray-200"
-              }
+              ${selectedPS5?.id === PS5.id
+                    ? "border-amber-500 bg-amber-50"
+                    : "border-gray-200"
+                  }
             `}
               >
                 <div className="flex items-center justify-between">
@@ -140,14 +405,13 @@ export default function PS5Settings() {
                   <span
                     className={`
                   px-2 py-1 rounded-full text-xs
-                  ${
-                    PS5.status === 1
-                      ? "bg-green-100 text-green-700"
-                      : "bg-red-100 text-red-700"
-                  }
+                  ${PS5.isActive
+                        ? "bg-green-100 text-green-700"
+                        : "bg-red-100 text-red-700"
+                      }
                 `}
                   >
-                    {PS5.status === 1 ? "Active" : "Inactive"}
+                    {PS5.isActive ? "Active" : "Inactive"}
                   </span>
                 </div>
               </button>
@@ -161,6 +425,12 @@ export default function PS5Settings() {
         <div className="flex items-center justify-between mb-6">
           <h2 className="font-semibold">PS5 Slot Configuration</h2>
         </div>
+
+        {!isConfigure ? (
+          <div className="text-center py-10">
+            <p className="text-gray-500">No slot configuration available.Create a new slot configuration to get started.</p>
+          </div>
+        ) : null}
 
         <div className="grid md:grid-cols-2 gap-5">
           <div>
@@ -215,8 +485,12 @@ export default function PS5Settings() {
         </div>
 
         <div className="flex justify-end mt-6">
-          <button
-            className="
+          {!isConfigure ? (
+            <button
+              onClick={() => {
+                handleCreateSlotConfiguration();
+              }}
+              className="
           h-11 px-5 rounded-xl
           bg-gradient-to-r
           from-red-500
@@ -224,9 +498,26 @@ export default function PS5Settings() {
           to-red-700
           text-white
         "
-          >
-            Create Slot
-          </button>
+            >
+              Create Configuration
+            </button>
+          ) : (
+            <button
+              onClick={() => {
+                handleCreateSlotConfiguration();
+              }}
+              className="
+          h-11 px-5 rounded-xl
+          bg-gradient-to-r
+          from-red-500
+          via-red-600
+          to-red-700
+          text-white
+        "
+            >
+              Update Configuration
+            </button>
+          )}
         </div>
       </div>
     </div>
