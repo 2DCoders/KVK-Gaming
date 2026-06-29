@@ -1,10 +1,21 @@
-import { useState } from "react";
+import { Alert } from "@/components/ui/alert";
+import { createGamingStation, getGamingStationsByCategory, updateGamingStation } from "@/services/gaming-stations-api";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 
 export default function PCSettings() {
   const [pcs, setPcs] = useState<any[]>([]);
   const [selectedPc, setSelectedPc] = useState<any>(null);
+  const [pageAlert, setPageAlert] = useState<{
+    visible: boolean;
+    variant?: "success" | "error" | "warning" | "info";
+    title?: string;
+    description?: string;
+  }>({ visible: false });
 
+  const [loading, setLoading] = useState(false);
   const [name, setName] = useState("");
+  const [price, setPrice] = useState(0);
   const [status, setStatus] = useState(true);
 
   const [startTime, setStartTime] = useState("09:00");
@@ -12,8 +23,158 @@ export default function PCSettings() {
   const [duration, setDuration] = useState(60);
   const [gap, setGap] = useState(0);
 
+  const categories = localStorage.getItem("categories")
+    ? JSON.parse(localStorage.getItem("categories") as string)
+    : [];
+
+  const pcCategory = categories.find(
+    (category: any) => category.name === "PC"
+  );
+
+  const pcCategoryId = pcCategory?.id;
+
+  const handleGetPCs = async () => {
+    if (!pcCategoryId) {
+      setPageAlert({
+        visible: true,
+        variant: "error",
+        title: "Error",
+        description: "PC category not found. Please ensure it exists.",
+      });
+      return;
+    }
+
+    try {
+      const response = await getGamingStationsByCategory(pcCategoryId);
+      setPcs(response);
+    } catch (error) {
+      console.error("Error fetching PCs:", error);
+      setPageAlert({
+        visible: true,
+        variant: "error",
+        title: "Error",
+        description: "Failed to fetch PCs.",
+      });
+    }
+  }
+
+  useEffect(() => {
+    handleGetPCs();
+  }, [pcCategoryId]);
+
+  const handleCreatePC = async () => {
+    if (!pcCategoryId) {
+      setPageAlert({
+        visible: true,
+        variant: "error",
+        title: "Error",
+        description: "PC category not found. Please ensure it exists.",
+      });
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const response = await createGamingStation({
+        name,
+        gamingCategoryId: pcCategoryId,
+        isActive: status,
+        stationCode: name.toUpperCase().replace(/\s+/g, "_"),
+        price,
+      });
+      console.log("PC created successfully:", response);
+      setPageAlert({
+        visible: true,
+        variant: "success",
+        title: "PC Created",
+        description: "The PC has been created successfully."
+      });
+      setName("");
+      setPrice(0);
+      setStatus(true);
+      handleGetPCs();
+    } catch (error) {
+      console.error("Error creating PC:", error);
+      setPageAlert({
+        visible: true,
+        variant: "error",
+        title: "Error",
+        description: "Failed to create PC."
+      });
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const handleUpdatePC = async () => {
+    if (!selectedPc) {
+      setPageAlert({
+        visible: true,
+        variant: "error",
+        title: "Error",
+        description: "No PC selected for update.",
+      });
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      await updateGamingStation({
+        id: selectedPc.id,
+        gamingCategoryId: pcCategoryId,
+        stationCode: selectedPc.stationCode,
+        name,
+        isActive: status,
+        price,
+      });
+      setPageAlert({
+        visible: true,
+        variant: "success",
+        title: "PC Updated",
+        description: "The PC has been updated successfully."
+      });
+      setSelectedPc(null);
+      setName("");
+      setPrice(0);
+      setStatus(true);
+      handleGetPCs();
+    } catch (error) {
+      setPageAlert({
+        visible: true,
+        variant: "error",
+        title: "Error",
+        description: "Failed to update PC."
+      });
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 space-y-6">
+
+      {pageAlert.visible && (
+        <div>
+          <Alert
+            variant={pageAlert.variant as any}
+            title={pageAlert.title}
+            description={pageAlert.description}
+            onClose={() => setPageAlert((s) => ({ ...s, visible: false }))}
+          />
+        </div>
+      )}
+
+      {loading && createPortal(
+        <div className="fixed inset-0 z-[9999999999] flex items-center justify-center bg-black/60 backdrop-blur-md">
+          <div className="flex flex-col items-center gap-3">
+            <div className="h-14 w-14 animate-spin rounded-full border-4 border-white/30 border-t-white"></div>
+            <p className="text-sm text-white font-medium">Loading</p>
+          </div>
+        </div>,
+        document.body
+      )}
       {/* Header */}
       <div>
         <h1 className="text-2xl font-semibold">PC Settings</h1>
@@ -34,7 +195,6 @@ export default function PCSettings() {
               <input
                 type="text"
                 value={name}
-                disabled={selectedPc}
                 onChange={(e) => setName(e.target.value)}
                 className="w-full h-11 rounded-xl border border-gray-200 px-3"
               />
@@ -46,9 +206,8 @@ export default function PCSettings() {
 
               <input
                 type="text"
-                value={name}
-                disabled={selectedPc}
-                onChange={(e) => setName(e.target.value)}
+                value={price}
+                onChange={(e) => setPrice(parseFloat(e.target.value) || 0)}
                 className="w-full h-11 rounded-xl border border-gray-200 px-3"
               />
             </div>
@@ -76,8 +235,31 @@ export default function PCSettings() {
 
             <div className="flex justify-end">
               {selectedPc ? (
-                <button
-                  className="
+                <>
+                  {/* need reset button */}
+                  <button
+                    onClick={() => {
+                      setSelectedPc(null);
+                      setName("");
+                      setPrice(0);
+                      setStatus(true);
+                    }}
+                    className="
+                h-11 px-5 rounded-xl
+                cursor-pointer
+                bg-gray-200
+                text-gray-700
+                mr-3
+              "
+                  >
+                    Reset
+                  </button>
+                  <button
+                    onClick={() => {
+                      handleUpdatePC();
+                    }}
+                    disabled={!name || !price}
+                    className="
                 h-11 px-5 rounded-xl
                 cursor-pointer
                 bg-gradient-to-r
@@ -85,12 +267,19 @@ export default function PCSettings() {
                 via-red-600
                 to-red-700
                 text-white
+                disabled:opacity-50
               "
-                >
-                  Update Status
-                </button>
+                  >
+                    Update PC
+                  </button>
+                </>
+
               ) : (
                 <button
+                  onClick={() => {
+                    handleCreatePC();
+                  }}
+                  disabled={!name || !price}
                   className="
                 h-11 px-5 rounded-xl
                 cursor-pointer
@@ -99,6 +288,7 @@ export default function PCSettings() {
                 via-red-600
                 to-red-700
                 text-white
+                disabled:opacity-50
               "
                 >
                   Create PC
@@ -121,17 +311,18 @@ export default function PCSettings() {
                 onClick={() => {
                   setSelectedPc(pc);
                   setName(pc.name);
-                  setStatus(pc.status === 1);
+                  setPrice(pc.price);
+                  setStatus(pc.isActive);
                 }}
                 className={`
               w-full p-3 rounded-xl border
               text-left transition-all
+              cursor-pointer
               hover:bg-gray-50
-              ${
-                selectedPc?.id === pc.id
-                  ? "border-amber-500 bg-amber-50"
-                  : "border-gray-200"
-              }
+              ${selectedPc?.id === pc.id
+                    ? "border-amber-500 bg-amber-50"
+                    : "border-gray-200"
+                  }
             `}
               >
                 <div className="flex items-center justify-between">
@@ -140,14 +331,13 @@ export default function PCSettings() {
                   <span
                     className={`
                   px-2 py-1 rounded-full text-xs
-                  ${
-                    pc.status === 1
-                      ? "bg-green-100 text-green-700"
-                      : "bg-red-100 text-red-700"
-                  }
+                  ${pc.isActive
+                        ? "bg-green-100 text-green-700"
+                        : "bg-red-100 text-red-700"
+                      }
                 `}
                   >
-                    {pc.status === 1 ? "Active" : "Inactive"}
+                    {pc.isActive ? "Active" : "Inactive"}
                   </span>
                 </div>
               </button>

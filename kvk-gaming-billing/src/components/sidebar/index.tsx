@@ -1,6 +1,7 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import { CheckSquare, Settings, ChevronDown, Calendar } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { getCategories } from "@/services/categories-api";
 
 interface SidebarProps {
   isOpen: boolean;
@@ -42,6 +43,19 @@ export default function Sidebar({ isOpen, isMobile, onClose }: SidebarProps) {
   const cashier = localStorage.getItem("cashier")
     ? JSON.parse(localStorage.getItem("cashier") as string)
     : null;
+
+  const handleGetCategories = async () => {
+    try{
+      const response = await getCategories();
+      localStorage.setItem("categories", JSON.stringify(response));
+    } catch (error) {
+      console.error("Error fetching categories:", error);
+    }
+  }
+
+  useEffect(() => {
+    handleGetCategories();
+  }, []);
 
   const navItems: NavItem[] = [
     {
