@@ -112,20 +112,21 @@ export default function Bookings() {
         date
       );
 
-      const today =
-        date === new Date().toISOString().split("T")[0];
-
-      const currentHour = new Date().getHours();
+      const now = new Date();
+      const bookingDate = date.split("T")[0];
+      const isToday = bookingDate === now.toISOString().split("T")[0];
 
       const mappedSlots = response.map((slot: any) => {
-        const startHour = Number(slot.startTime.split(":")[0]);
-
         let status: "available" | "booked" | "past" = "available";
 
         if (slot.isBooked) {
           status = "booked";
-        } else if (today && startHour < currentHour) {
-          status = "past";
+        } else if (isToday) {
+          const slotDateTime = new Date(`${bookingDate}T${slot.startTime}`);
+
+          if (slotDateTime <= now) {
+            status = "past";
+          }
         }
 
         return {
@@ -143,6 +144,8 @@ export default function Bookings() {
       setSlotsAvailability([]);
     }
   };
+
+
 
   useEffect(() => {
     const load = async () => {
@@ -283,23 +286,21 @@ export default function Bookings() {
             {slotsAvailability.map((slot) => (
               <button
                 key={slot.id}
+                disabled={slot.status !== "available"}
                 className={`
-                h-11
-                rounded-xl
-                border
-                text-sm
-                font-medium
-                transition-all
-                cursor-pointer
-                ${selected
-                    ? "border-amber-500 bg-amber-50 text-amber-700"
+    h-11
+    rounded-xl
+    border
+    text-sm
+    font-medium
+    transition-all
+    ${slot.status === "available"
+                    ? "bg-white border-gray-200 hover:border-gray-400 cursor-pointer"
                     : slot.status === "booked"
-                      ? "bg-green-100 border-green-200 text-black-400 cursor-not-allowed"
-                      : slot.status === "past"
-                        ? "bg-gray-50 border-gray-100 text-gray-300 cursor-not-allowed"
-                        : "bg-white border-gray-200 hover:border-gray-400"
+                      ? "bg-green-100 border-green-200 text-gray-500 cursor-not-allowed"
+                      : "bg-gray-50 border-gray-100 text-gray-300 cursor-not-allowed"
                   }
-              `}
+  `}
               >
                 {slot.time}
               </button>
