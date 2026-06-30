@@ -37,3 +37,16 @@ export const createSlotConfiguration = async (slotConfigData: any) => {
     throw error;
   }
 };
+
+export const updateSlotConfiguration = async (slotConfigData: any) => {
+  try {
+    const response = await axios.put(`${SLOTS_API_URL}`, slotConfigData, {
+      headers: {
+        Authorization: `Bearer ${getToken()}`,
+      },
+    });
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};

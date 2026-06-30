@@ -1,6 +1,6 @@
 import { Alert } from "@/components/ui/alert";
 import { createGamingStation, getGamingStationsByCategory, updateGamingStation } from "@/services/gaming-stations-api";
-import { createSlotConfiguration, getSlotConfigurationByCategory } from "@/services/slots-api";
+import { createSlotConfiguration, getSlotConfigurationByCategory, updateSlotConfiguration } from "@/services/slots-api";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
@@ -18,6 +18,7 @@ export default function PS5Settings() {
   const [name, setName] = useState("");
   const [price, setPrice] = useState(0);
   const [status, setStatus] = useState(true);
+  const [id, setId] = useState("");
 
   const [startTime, setStartTime] = useState("09:00");
   const [endTime, setEndTime] = useState("22:00");
@@ -168,6 +169,7 @@ export default function PS5Settings() {
       setEndTime(response.endTime);
       setDuration(response.duration);
       setGap(response.gap);
+      setId(response.id);
       setIsConfigure(true);
     } catch (error) {
       setStartTime("09:00");
@@ -177,6 +179,49 @@ export default function PS5Settings() {
       setIsConfigure(false);
     }
   }
+
+  const handleUpdateSlotConfiguration = async (id: string) => {
+      if (!PS5CategoryId) {
+        setPageAlert({
+          visible: true,
+          variant: "error",
+          title: "Error",
+          description: "PS5 category not found. Please ensure it exists.",
+        });
+        return;
+      }
+  
+      setLoading(true);
+  
+      try {
+        await updateSlotConfiguration({
+          id: id,
+          gamingCategoryId: PS5CategoryId,
+          startTime,
+          endTime,
+          slotDurationMinutes: duration,
+          slotGapMinutes: gap,
+          isActive: 1,
+          price: 0
+        });
+        setPageAlert({
+          visible: true,
+          variant: "success",
+          title: "Slot Configuration Updated",
+          description: "The slot configuration has been updated successfully."
+        });
+        handleGetSlotConfiguration();
+      } catch (error) {
+        setPageAlert({
+          visible: true,
+          variant: "error",
+          title: "Error",
+          description: "Failed to update slot configuration."
+        });
+      } finally {
+        setLoading(false);
+      }
+    }
 
   const handleCreateSlotConfiguration = async () => {
     if (!PS5CategoryId) {
@@ -504,7 +549,7 @@ export default function PS5Settings() {
           ) : (
             <button
               onClick={() => {
-                handleCreateSlotConfiguration();
+                handleUpdateSlotConfiguration(id);
               }}
               className="
           h-11 px-5 rounded-xl
