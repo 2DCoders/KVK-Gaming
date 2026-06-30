@@ -13,7 +13,7 @@ export default function Bookings() {
   const [gamingStations, setGamingStations] = useState<any[]>([]);
   const [slotsAvailability, setSlotsAvailability] = useState<any[]>([]);
   const [selectedGamingStation, setSelectedGamingStation] = useState("");
-  const [selected, setSelected] = useState(false);
+  const [selectedSlots, setSelectedSlots] = useState<string[]>([]);
 
   const formatTime = (time: string) => {
     const [hours, minutes] = time.split(":").map(Number);
@@ -27,6 +27,40 @@ export default function Bookings() {
       hour12: true,
     });
   };
+
+  const toggleSlot = (slotId: string) => {
+    const slotIndex = slotsAvailability.findIndex((s) => s.id === slotId);
+
+    setSelectedSlots((prev) => {
+      const existing = [...prev];
+
+      // Deselect
+      if (existing.includes(slotId)) {
+        return existing.filter((id) => id !== slotId);
+      }
+
+      // First selection
+      if (existing.length === 0) {
+        return [slotId];
+      }
+
+      const indexes = existing.map((id) =>
+        slotsAvailability.findIndex((s) => s.id === id)
+      );
+
+      const min = Math.min(...indexes);
+      const max = Math.max(...indexes);
+
+      // Allow selecting only the previous or next slot
+      if (slotIndex === min - 1 || slotIndex === max + 1) {
+        return [...existing, slotId];
+      }
+
+      return prev;
+    });
+  };
+
+  const isSelected = (slotId: string) => selectedSlots.includes(slotId);
 
   const handleGetNextWorkingDays = async () => {
     const yesterday = new Date();
@@ -145,8 +179,6 @@ export default function Bookings() {
     }
   };
 
-
-
   useEffect(() => {
     const load = async () => {
       const workingDays = await handleGetNextWorkingDays();
@@ -155,6 +187,22 @@ export default function Bookings() {
 
     load();
   }, []);
+
+  const selectedSlotObjects = slotsAvailability.filter((slot) =>
+  selectedSlots.includes(slot.id)
+);
+
+const totalHours = selectedSlotObjects.length;
+
+const rate =
+  selectedSlotObjects.length > 0
+    ? selectedSlotObjects[0].price
+    : 0;
+
+const totalAmount = selectedSlotObjects.reduce(
+  (sum, slot) => sum + slot.price,
+  0
+);
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6">
@@ -178,6 +226,8 @@ export default function Bookings() {
               const categoryId = e.target.value;
 
               setSelectedStation(categoryId);
+              setSelectedGamingStation("");
+              setSelectedSlots([]);
 
               handleGetGamingStations(
                 categoryId,
@@ -204,6 +254,7 @@ export default function Bookings() {
               key={day.date}
               onClick={() => {
                 setSelectedDate(index);
+                setSelectedSlots([]);
 
                 if (selectedGamingStation) {
                   handleGetSlotsAvailability(
@@ -245,6 +296,7 @@ export default function Bookings() {
               key={station.id}
               onClick={() => {
                 setSelectedGamingStation(station.id);
+                setSelectedSlots([]);
 
                 handleGetSlotsAvailability(
                   station.id,
@@ -287,6 +339,7 @@ export default function Bookings() {
               <button
                 key={slot.id}
                 disabled={slot.status !== "available"}
+                onClick={() => toggleSlot(slot.id)}
                 className={`
     h-11
     rounded-xl
@@ -294,11 +347,15 @@ export default function Bookings() {
     text-sm
     font-medium
     transition-all
-    ${slot.status === "available"
-                    ? "bg-white border-gray-200 hover:border-gray-400 cursor-pointer"
-                    : slot.status === "booked"
-                      ? "bg-green-100 border-green-200 text-gray-500 cursor-not-allowed"
-                      : "bg-gray-50 border-gray-100 text-gray-300 cursor-not-allowed"
+    cursor-pointer
+
+    ${isSelected(slot.id)
+                    ? "border-amber-500 bg-amber-50 text-amber-700"
+                    : slot.status === "available"
+                      ? "bg-white border-gray-200 hover:border-gray-400"
+                      : slot.status === "booked"
+                        ? "bg-green-100 border-green-200 text-gray-500 cursor-not-allowed"
+                        : "bg-gray-50 border-gray-100 text-gray-300 cursor-not-allowed"
                   }
   `}
               >
@@ -326,23 +383,23 @@ export default function Bookings() {
 
               <div className="flex justify-between">
                 <span className="text-gray-500 text-sm">Hours</span>
-                <span className="font-medium">2 Hours</span>
+                <span className="font-medium">{totalHours} {totalHours === 1 ? "Hour" : "Hours"}</span>
               </div>
 
               <div className="flex justify-between">
                 <span className="text-gray-500 text-sm">Rate</span>
-                <span>Rs. </span>
+                <span>Rs. {rate.toLocaleString()}</span>
               </div>
 
               <div className="border-t pt-4 flex justify-between items-center">
                 <span className="font-semibold">Total</span>
 
                 <span className="text-2xl font-bold text-amber-600">
-                  Rs. 1,000
+                  Rs. {totalAmount.toLocaleString()}
                 </span>
               </div>
 
-              <button className="w-full h-12 rounded-xl bg-gradient-to-r from-amber-500 via-amber-600 to-orange-700 text-white font-medium flex items-center justify-center gap-2">
+              <button className="w-full cursor-pointer h-12 rounded-xl bg-gradient-to-r from-amber-500 via-amber-600 to-orange-700 text-white font-medium flex items-center justify-center gap-2">
                 Confirm Booking
                 <ChevronRight size={18} />
               </button>
