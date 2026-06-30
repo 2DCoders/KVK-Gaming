@@ -542,6 +542,7 @@ export default function PCSettings() {
           via-red-600
           to-red-700
           text-white
+          cursor-pointer
         "
             >
               Create Configuration
@@ -558,6 +559,7 @@ export default function PCSettings() {
           via-red-600
           to-red-700
           text-white
+          cursor-pointer
         "
             >
               Update Configuration

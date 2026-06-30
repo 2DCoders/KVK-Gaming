@@ -50,3 +50,16 @@ export const updateSlotConfiguration = async (slotConfigData: any) => {
     throw error;
   }
 };
+
+export const getSlotsAvailability = async (stationId: string, categoryId: string, date: string) => {
+    try {
+        const response = await axios.get(`${SLOTS_API_URL}availability-by-station-category?stationId=${stationId}&categoryId=${categoryId}&date=${date}`, {
+            headers: {
+                Authorization: `Bearer ${getToken()}`,
+            },
+        });
+        return response.data;
+    } catch (error) {
+        throw error;
+    }
+}
