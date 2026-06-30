@@ -13,14 +13,19 @@ export default function Bookings() {
   const [gamingStations, setGamingStations] = useState<any[]>([]);
   const [slotsAvailability, setSlotsAvailability] = useState<any[]>([]);
   const [selectedGamingStation, setSelectedGamingStation] = useState("");
+  const [selected, setSelected] = useState(false);
 
   const formatTime = (time: string) => {
-    const [hour] = time.split(":").map(Number);
+    const [hours, minutes] = time.split(":").map(Number);
 
-    const suffix = hour >= 12 ? "PM" : "AM";
-    const displayHour = hour % 12 || 12;
+    const date = new Date();
+    date.setHours(hours, minutes, 0);
 
-    return `${displayHour}${suffix}`;
+    return date.toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    });
   };
 
   const handleGetNextWorkingDays = async () => {
@@ -271,34 +276,36 @@ export default function Bookings() {
       </div>
 
       <div className="grid lg:grid-cols-[1fr_340px] gap-6">
+
         {/* Slot section */}
-
-        <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-2">
-          {slotsAvailability.map((slot) => (
-            <button
-              key={slot.id}
-              disabled={slot.status !== "available"}
-              className={`
-        h-11
-        rounded-xl
-        border
-        text-sm
-        font-medium
-        transition-all
-
-        ${slot.status === "available"
-                  ? "bg-white border-gray-200 hover:border-gray-400 cursor-pointer"
-                  : slot.status === "booked"
-                    ? "bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed"
-                    : "bg-gray-50 border-gray-100 text-gray-300 cursor-not-allowed"
-                }
-      `}
-            >
-              {slot.time}
-            </button>
-          ))}
+        <div className="bg-white rounded-2xl border border-gray-200 p-5 h-fit">
+          <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-2">
+            {slotsAvailability.map((slot) => (
+              <button
+                key={slot.id}
+                className={`
+                h-11
+                rounded-xl
+                border
+                text-sm
+                font-medium
+                transition-all
+                cursor-pointer
+                ${selected
+                    ? "border-amber-500 bg-amber-50 text-amber-700"
+                    : slot.status === "booked"
+                      ? "bg-green-100 border-green-200 text-black-400 cursor-not-allowed"
+                      : slot.status === "past"
+                        ? "bg-gray-50 border-gray-100 text-gray-300 cursor-not-allowed"
+                        : "bg-white border-gray-200 hover:border-gray-400"
+                  }
+              `}
+              >
+                {slot.time}
+              </button>
+            ))}
+          </div>
         </div>
-
         {/* Summary */}
 
         <div className="lg:sticky lg:top-6 h-fit">
