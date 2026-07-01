@@ -2,6 +2,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { CheckSquare, Settings, ChevronDown, Calendar } from "lucide-react";
 import { useEffect, useState } from "react";
 import { getCategories } from "@/services/categories-api";
+import { getDayEndData } from "@/services/dayend-api";
 
 interface SidebarProps {
   isOpen: boolean;
@@ -40,12 +41,42 @@ export default function Sidebar({ isOpen, isMobile, onClose }: SidebarProps) {
     );
   };
 
+  const [isDidDayEnd, setIsDidDayEnd] = useState(false);
+
+  const handleGetDayEndData = async () => {
+    const today = new Date().toISOString().split("T")[0];
+
+    try {
+      const res = await getDayEndData(today);
+      if (res && res.length > 0) {
+        setIsDidDayEnd(true);
+        localStorage.setItem("dayEndData", JSON.stringify(res[0]));
+      } else {
+        setIsDidDayEnd(false);
+        localStorage.removeItem("dayEndData");
+      }
+    } catch (error) {
+      setIsDidDayEnd(false);
+      localStorage.removeItem("dayEndData");
+    }
+  };
+
+  useEffect(() => {
+    handleGetDayEndData();
+  }, []);
+
+  const canAccessMenu = (itemId: string) => {
+    if (isDidDayEnd) return true;
+
+    return itemId === "dayend";
+  };
+
   const cashier = localStorage.getItem("cashier")
     ? JSON.parse(localStorage.getItem("cashier") as string)
     : null;
 
   const handleGetCategories = async () => {
-    try{
+    try {
       const response = await getCategories();
       localStorage.setItem("categories", JSON.stringify(response));
     } catch (error) {
@@ -162,21 +193,28 @@ export default function Sidebar({ isOpen, isMobile, onClose }: SidebarProps) {
               return (
                 <div key={item.id}>
                   <button
-                    onClick={() =>
+                    onClick={() => {
+                      if (!canAccessMenu(item.id)) return;
+
                       item.submenu
                         ? toggleMenu(item.id)
-                        : handleNavigation(item.path!)
-                    }
-                    className={`${btnBase} cursor-pointer ${
-                      active && !collapsed
+                        : handleNavigation(item.path!);
+                    }}
+                    disabled={!canAccessMenu(item.id)}
+                    className={`${btnBase}
+    ${active && !collapsed
                         ? "bg-red-50 text-red-700 shadow-sm"
                         : "text-gray-700 hover:bg-gray-50"
-                    }`}
+                      }
+    ${!canAccessMenu(item.id)
+                        ? "opacity-50 cursor-not-allowed"
+                        : "cursor-pointer"
+                      }
+  `}
                   >
                     <div
-                      className={`flex items-center gap-3 ${
-                        collapsed ? "justify-center" : ""
-                      }`}
+                      className={`flex items-center gap-3 ${collapsed ? "justify-center" : ""
+                        }`}
                     >
                       <span className={iconWrapper}>
                         <Icon size={16} />
@@ -184,11 +222,10 @@ export default function Sidebar({ isOpen, isMobile, onClose }: SidebarProps) {
 
                       {!collapsed && (
                         <span
-                          className={`text-sm ${
-                            active
+                          className={`text-sm ${active
                               ? "text-red-700 font-semibold"
                               : "text-gray-700"
-                          }`}
+                            }`}
                         >
                           {item.label}
                         </span>
@@ -198,9 +235,8 @@ export default function Sidebar({ isOpen, isMobile, onClose }: SidebarProps) {
                     {!collapsed && item.submenu && (
                       <ChevronDown
                         size={16}
-                        className={`text-gray-400 transition-transform ${
-                          isOpen ? "rotate-180" : ""
-                        }`}
+                        className={`text-gray-400 transition-transform ${isOpen ? "rotate-180" : ""
+                          }`}
                       />
                     )}
                   </button>
@@ -212,11 +248,10 @@ export default function Sidebar({ isOpen, isMobile, onClose }: SidebarProps) {
                         <button
                           key={subitem.id}
                           onClick={() => handleNavigation(subitem.path)}
-                          className={`w-full text-left px-3 py-2 text-sm rounded-lg transition cursor-pointer ${
-                            isActive(subitem.path)
+                          className={`w-full text-left px-3 py-2 text-sm rounded-lg transition cursor-pointer ${isActive(subitem.path)
                               ? "bg-red-50 text-red-700 font-medium"
                               : "text-gray-600 hover:bg-gray-50"
-                          }`}
+                            }`}
                         >
                           {subitem.label}
                         </button>

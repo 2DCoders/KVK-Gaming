@@ -3,6 +3,7 @@ import { createGamingStation, getGamingStationsByCategory, updateGamingStation }
 import { createSlotConfiguration, getSlotConfigurationByCategory, updateSlotConfiguration } from "@/services/slots-api";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import { useNavigate } from "react-router-dom";
 
 export default function PoolSettings() {
   const [Pools, setPools] = useState<any[]>([]);
@@ -33,6 +34,16 @@ export default function PoolSettings() {
   const PoolCategory = categories.find(
     (category: any) => category.name === "Pool"
   );
+
+    const navigate = useNavigate();
+
+  const dayendData = localStorage.getItem("dayEndData") ? JSON.parse(localStorage.getItem("dayEndData") as string) : null;
+
+  useEffect(() => {
+    if (!dayendData) {
+      navigate("/dayend");
+    }
+  }, [dayendData]);
 
   const PoolCategoryId = PoolCategory?.id;
 

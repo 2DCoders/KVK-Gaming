@@ -4,6 +4,8 @@ import { getCategories } from "@/services/categories-api";
 import { getNextWorkingDays } from "@/services/holiday-api";
 import { getGamingStationsByCategory } from "@/services/gaming-stations-api";
 import { getSlotsAvailability } from "@/services/slots-api";
+import { multiHoldBooking } from "@/services/bookings-api";
+import { useNavigate } from "react-router-dom";
 
 export default function Bookings() {
   const [selectedDate, setSelectedDate] = useState(0);
@@ -27,6 +29,16 @@ export default function Bookings() {
       hour12: true,
     });
   };
+
+  const navigate = useNavigate();
+
+  const dayendData = localStorage.getItem("dayEndData") ? JSON.parse(localStorage.getItem("dayEndData") as string) : null;
+
+  useEffect(() => {
+    if (!dayendData) {
+      navigate("/dayend");
+    }
+  }, [dayendData]);
 
   const toggleSlot = (slotId: string) => {
     const slotIndex = slotsAvailability.findIndex((s) => s.id === slotId);
@@ -134,6 +146,36 @@ export default function Bookings() {
     }
   };
 
+  const handleBooking = async () => {
+    if (!selectedGamingStation || selectedSlots.length === 0) {
+      alert("Please select at least one slot.");
+      return;
+    }
+
+    try {
+      const bookingDate = days[selectedDate].date.split("T")[0];
+
+      const bookings = selectedSlots.map((slotId) => ({
+        gamingCategoryId: selectedStation,
+        gamingStationId: selectedGamingStation,
+        gamingSlotId: slotId,
+        bookingDate,
+      }));
+
+      const request = {
+        bookings,
+        totalAmount,
+        paymentTypes: 0,
+      };
+
+      console.log(request);
+
+      await multiHoldBooking(request);
+    } catch (error) {
+      console.error("Error booking slots:", error);
+    }
+  };
+
   const handleGetSlotsAvailability = async (
     stationId: string,
     categoryId: string,
@@ -189,20 +231,20 @@ export default function Bookings() {
   }, []);
 
   const selectedSlotObjects = slotsAvailability.filter((slot) =>
-  selectedSlots.includes(slot.id)
-);
+    selectedSlots.includes(slot.id)
+  );
 
-const totalHours = selectedSlotObjects.length;
+  const totalHours = selectedSlotObjects.length;
 
-const rate =
-  selectedSlotObjects.length > 0
-    ? selectedSlotObjects[0].price
-    : 0;
+  const rate =
+    selectedSlotObjects.length > 0
+      ? selectedSlotObjects[0].price
+      : 0;
 
-const totalAmount = selectedSlotObjects.reduce(
-  (sum, slot) => sum + slot.price,
-  0
-);
+  const totalAmount = selectedSlotObjects.reduce(
+    (sum, slot) => sum + slot.price,
+    0
+  );
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6">
@@ -234,7 +276,7 @@ const totalAmount = selectedSlotObjects.reduce(
                 days[selectedDate].date
               );
             }}
-            className="w-full h-11 rounded-xl border border-gray-300 cursor-pointer px-4 bg-white outline-none focus:ring-2 focus:ring-amber-500"
+            className="w-full h-11 rounded-xl border border-gray-300 cursor-pointer px-4 bg-white outline-none focus:ring-2 focus:ring-red-500"
           >
             {categories.map((category) => (
               <option key={category.id} value={category.id}>
@@ -273,7 +315,7 @@ const totalAmount = selectedSlotObjects.reduce(
       cursor-pointer
       transition-all
       ${selectedDate === index
-                  ? "border-amber-500 bg-amber-50 text-amber-700"
+                  ? "border-red-500 bg-red-50 text-red-700"
                   : "bg-white border-gray-200 hover:border-gray-300"
                 }
     `}
@@ -312,14 +354,14 @@ const totalAmount = selectedSlotObjects.reduce(
       transition-all
 
       ${selectedGamingStation === station.id
-                  ? "border-amber-500 bg-amber-50 shadow-sm"
-                  : "border-gray-200 bg-white hover:border-amber-300 hover:shadow-md"
+                  ? "border-red-500 bg-red-50 shadow-sm"
+                  : "border-gray-200 bg-white hover:border-red-300 hover:shadow-md"
                 }
     `}
             >
               <h3
                 className={`font-medium ${selectedGamingStation === station.id
-                  ? "text-amber-700"
+                  ? "text-red-700"
                   : "text-gray-900"
                   }`}
               >
@@ -350,7 +392,7 @@ const totalAmount = selectedSlotObjects.reduce(
     cursor-pointer
 
     ${isSelected(slot.id)
-                    ? "border-amber-500 bg-amber-50 text-amber-700"
+                    ? "border-red-500 bg-red-50 text-red-700"
                     : slot.status === "available"
                       ? "bg-white border-gray-200 hover:border-gray-400"
                       : slot.status === "booked"
@@ -394,12 +436,12 @@ const totalAmount = selectedSlotObjects.reduce(
               <div className="border-t pt-4 flex justify-between items-center">
                 <span className="font-semibold">Total</span>
 
-                <span className="text-2xl font-bold text-amber-600">
+                <span className="text-2xl font-bold text-red-600">
                   Rs. {totalAmount.toLocaleString()}
                 </span>
               </div>
 
-              <button className="w-full cursor-pointer h-12 rounded-xl bg-gradient-to-r from-amber-500 via-amber-600 to-orange-700 text-white font-medium flex items-center justify-center gap-2">
+              <button className="w-full cursor-pointer h-12 rounded-xl bg-gradient-to-r from-red-500 via-red-600 to-red-700 text-white font-medium flex items-center justify-center gap-2">
                 Confirm Booking
                 <ChevronRight size={18} />
               </button>

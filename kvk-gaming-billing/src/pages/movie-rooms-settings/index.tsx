@@ -3,6 +3,7 @@ import { createGamingStation, getGamingStationsByCategory, updateGamingStation }
 import { createSlotConfiguration, getSlotConfigurationByCategory, updateSlotConfiguration } from "@/services/slots-api";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import { useNavigate } from "react-router-dom";
 
 export default function MovieRoomsSettings() {
   const [MovieRoomss, setMovieRoomss] = useState<any[]>([]);
@@ -33,6 +34,16 @@ export default function MovieRoomsSettings() {
   const MovieRoomsCategory = categories.find(
     (category: any) => category.name === "Movie Rooms"
   );
+
+  const navigate = useNavigate();
+
+  const dayendData = localStorage.getItem("dayEndData") ? JSON.parse(localStorage.getItem("dayEndData") as string) : null;
+
+  useEffect(() => {
+    if (!dayendData) {
+      navigate("/dayend");
+    }
+  }, [dayendData]);
 
   const MovieRoomsCategoryId = MovieRoomsCategory?.id;
 
@@ -181,47 +192,47 @@ export default function MovieRoomsSettings() {
   }
 
   const handleUpdateSlotConfiguration = async (id: string) => {
-      if (!MovieRoomsCategoryId) {
-        setPageAlert({
-          visible: true,
-          variant: "error",
-          title: "Error",
-          description: "MovieRooms category not found. Please ensure it exists.",
-        });
-        return;
-      }
-  
-      setLoading(true);
-  
-      try {
-        await updateSlotConfiguration({
-          id: id,
-          gamingCategoryId: MovieRoomsCategoryId,
-          startTime,
-          endTime,
-          slotDurationMinutes: duration,
-          slotGapMinutes: gap,
-          isActive: 1,
-          price: 0
-        });
-        setPageAlert({
-          visible: true,
-          variant: "success",
-          title: "Slot Configuration Updated",
-          description: "The slot configuration has been updated successfully."
-        });
-        handleGetSlotConfiguration();
-      } catch (error) {
-        setPageAlert({
-          visible: true,
-          variant: "error",
-          title: "Error",
-          description: "Failed to update slot configuration."
-        });
-      } finally {
-        setLoading(false);
-      }
+    if (!MovieRoomsCategoryId) {
+      setPageAlert({
+        visible: true,
+        variant: "error",
+        title: "Error",
+        description: "MovieRooms category not found. Please ensure it exists.",
+      });
+      return;
     }
+
+    setLoading(true);
+
+    try {
+      await updateSlotConfiguration({
+        id: id,
+        gamingCategoryId: MovieRoomsCategoryId,
+        startTime,
+        endTime,
+        slotDurationMinutes: duration,
+        slotGapMinutes: gap,
+        isActive: 1,
+        price: 0
+      });
+      setPageAlert({
+        visible: true,
+        variant: "success",
+        title: "Slot Configuration Updated",
+        description: "The slot configuration has been updated successfully."
+      });
+      handleGetSlotConfiguration();
+    } catch (error) {
+      setPageAlert({
+        visible: true,
+        variant: "error",
+        title: "Error",
+        description: "Failed to update slot configuration."
+      });
+    } finally {
+      setLoading(false);
+    }
+  }
 
   const handleCreateSlotConfiguration = async () => {
     if (!MovieRoomsCategoryId) {
