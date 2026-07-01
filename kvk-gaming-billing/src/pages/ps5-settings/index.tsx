@@ -17,7 +17,6 @@ export default function PS5Settings() {
 
   const [loading, setLoading] = useState(false);
   const [name, setName] = useState("");
-  const [price, setPrice] = useState(0);
   const [status, setStatus] = useState(true);
   const [id, setId] = useState("");
 
@@ -91,7 +90,6 @@ export default function PS5Settings() {
         gamingCategoryId: PS5CategoryId,
         isActive: status,
         stationCode: name.toUpperCase().replace(/\s+/g, "_"),
-        price,
       });
       console.log("PS5 created successfully:", response);
       setPageAlert({
@@ -101,7 +99,6 @@ export default function PS5Settings() {
         description: "The PS5 has been created successfully."
       });
       setName("");
-      setPrice(0);
       setStatus(true);
       handleGetPS5s();
     } catch (error) {
@@ -137,7 +134,6 @@ export default function PS5Settings() {
         stationCode: selectedPS5.stationCode,
         name,
         isActive: status,
-        price,
       });
       setPageAlert({
         visible: true,
@@ -147,7 +143,6 @@ export default function PS5Settings() {
       });
       setSelectedPS5(null);
       setName("");
-      setPrice(0);
       setStatus(true);
       handleGetPS5s();
     } catch (error) {
@@ -316,7 +311,7 @@ export default function PS5Settings() {
         <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-200 p-6">
           <h2 className="font-semibold mb-6">PS5 Configuration</h2>
 
-          <div className="space-y-5 grid md:grid-cols-2 gap-5">
+          <div className="space-y-5 grid md:grid-cols-1 gap-5">
             <div>
               <label className="text-sm text-gray-600 block mb-2">
                 PS5 Name
@@ -326,18 +321,6 @@ export default function PS5Settings() {
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full h-11 rounded-xl border border-gray-200 px-3"
-              />
-            </div>
-            <div>
-              <label className="text-sm text-gray-600 block mb-2">
-                Price
-              </label>
-
-              <input
-                type="text"
-                value={price}
-                onChange={(e) => setPrice(parseFloat(e.target.value) || 0)}
                 className="w-full h-11 rounded-xl border border-gray-200 px-3"
               />
             </div>
@@ -371,7 +354,6 @@ export default function PS5Settings() {
                     onClick={() => {
                       setSelectedPS5(null);
                       setName("");
-                      setPrice(0);
                       setStatus(true);
                     }}
                     className="
@@ -388,7 +370,7 @@ export default function PS5Settings() {
                     onClick={() => {
                       handleUpdatePS5();
                     }}
-                    disabled={!name || !price}
+                    disabled={!name}
                     className="
                 h-11 px-5 rounded-xl
                 cursor-pointer
@@ -409,7 +391,7 @@ export default function PS5Settings() {
                   onClick={() => {
                     handleCreatePS5();
                   }}
-                  disabled={!name || !price}
+                  disabled={!name}
                   className="
                 h-11 px-5 rounded-xl
                 cursor-pointer
@@ -441,7 +423,6 @@ export default function PS5Settings() {
                 onClick={() => {
                   setSelectedPS5(PS5);
                   setName(PS5.name);
-                  setPrice(PS5.price);
                   setStatus(PS5.isActive);
                 }}
                 className={`

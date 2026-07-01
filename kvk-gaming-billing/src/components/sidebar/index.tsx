@@ -41,24 +41,26 @@ export default function Sidebar({ isOpen, isMobile, onClose }: SidebarProps) {
     );
   };
 
-  const [isDidDayEnd, setIsDidDayEnd] = useState(false);
+  const [isDidDayEnd, setIsDidDayEnd] = useState(true);
+
+  localStorage.setItem("dayEndData", JSON.stringify("ddbsfhb"));
 
   const handleGetDayEndData = async () => {
     const today = new Date().toISOString().split("T")[0];
 
-    try {
-      const res = await getDayEndData(today);
-      if (res && res.length > 0) {
-        setIsDidDayEnd(true);
-        localStorage.setItem("dayEndData", JSON.stringify(res[0]));
-      } else {
-        setIsDidDayEnd(false);
-        localStorage.removeItem("dayEndData");
-      }
-    } catch (error) {
-      setIsDidDayEnd(false);
-      localStorage.removeItem("dayEndData");
-    }
+    // try {
+    //   const res = await getDayEndData(today);
+    //   if (res && res.length > 0) {
+    //     setIsDidDayEnd(true);
+    //     localStorage.setItem("dayEndData", JSON.stringify(res[0]));
+    //   } else {
+    //     setIsDidDayEnd(false);
+    //     localStorage.removeItem("dayEndData");
+    //   }
+    // } catch (error) {
+    //   setIsDidDayEnd(false);
+    //   localStorage.removeItem("dayEndData");
+    // }
   };
 
   useEffect(() => {

@@ -17,7 +17,6 @@ export default function PCSettings() {
 
   const [loading, setLoading] = useState(false);
   const [name, setName] = useState("");
-  const [price, setPrice] = useState(0);
   const [status, setStatus] = useState(true);
 
   const [id, setId] = useState("");
@@ -91,7 +90,6 @@ export default function PCSettings() {
         gamingCategoryId: pcCategoryId,
         isActive: status,
         stationCode: name.toUpperCase().replace(/\s+/g, "_"),
-        price,
       });
       console.log("PC created successfully:", response);
       setPageAlert({
@@ -101,7 +99,6 @@ export default function PCSettings() {
         description: "The PC has been created successfully."
       });
       setName("");
-      setPrice(0);
       setStatus(true);
       handleGetPCs();
     } catch (error) {
@@ -137,7 +134,6 @@ export default function PCSettings() {
         stationCode: selectedPc.stationCode,
         name,
         isActive: status,
-        price,
       });
       setPageAlert({
         visible: true,
@@ -147,7 +143,6 @@ export default function PCSettings() {
       });
       setSelectedPc(null);
       setName("");
-      setPrice(0);
       setStatus(true);
       handleGetPCs();
     } catch (error) {
@@ -316,7 +311,7 @@ export default function PCSettings() {
         <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-200 p-6">
           <h2 className="font-semibold mb-6">PC Configuration</h2>
 
-          <div className="space-y-5 grid md:grid-cols-2 gap-5">
+          <div className="space-y-5 grid md:grid-cols-1 gap-5">
             <div>
               <label className="text-sm text-gray-600 block mb-2">
                 PC Name
@@ -326,18 +321,6 @@ export default function PCSettings() {
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full h-11 rounded-xl border border-gray-200 px-3"
-              />
-            </div>
-            <div>
-              <label className="text-sm text-gray-600 block mb-2">
-                Price
-              </label>
-
-              <input
-                type="text"
-                value={price}
-                onChange={(e) => setPrice(parseFloat(e.target.value) || 0)}
                 className="w-full h-11 rounded-xl border border-gray-200 px-3"
               />
             </div>
@@ -371,7 +354,6 @@ export default function PCSettings() {
                     onClick={() => {
                       setSelectedPc(null);
                       setName("");
-                      setPrice(0);
                       setStatus(true);
                     }}
                     className="
@@ -388,7 +370,7 @@ export default function PCSettings() {
                     onClick={() => {
                       handleUpdatePC();
                     }}
-                    disabled={!name || !price}
+                    disabled={!name}
                     className="
                 h-11 px-5 rounded-xl
                 cursor-pointer
@@ -409,7 +391,7 @@ export default function PCSettings() {
                   onClick={() => {
                     handleCreatePC();
                   }}
-                  disabled={!name || !price}
+                  disabled={!name}
                   className="
                 h-11 px-5 rounded-xl
                 cursor-pointer
@@ -441,7 +423,6 @@ export default function PCSettings() {
                 onClick={() => {
                   setSelectedPc(pc);
                   setName(pc.name);
-                  setPrice(pc.price);
                   setStatus(pc.isActive);
                 }}
                 className={`
