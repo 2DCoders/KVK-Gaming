@@ -42,9 +42,9 @@ export default function Dayend() {
   const [loading, setLoading] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
 
-  const loadSummary = async (date: string) => {
+  const loadSummary = async (startDate: string, endDate: string) => {
     try {
-      const response = await getFinancialSummary(date, date);
+      const response = await getFinancialSummary(startDate, endDate);
       const summary =
         response?.additionalData?.response ??
         response?.response ??
@@ -91,10 +91,22 @@ export default function Dayend() {
       if (res && res.length > 0) {
         const data = res[0];
         setDayEndData(data);
-        loadSummary(data.currentDate.split("T")[0]);
+
+        // Current date
+        const currentDate = new Date(data.currentDate);
+
+        // Next date
+        const nextDate = new Date(currentDate);
+        nextDate.setDate(nextDate.getDate() + 1);
+
+        // Format dates as YYYY-MM-DD
+        const currentDateString = currentDate.toISOString().split("T")[0];
+        const nextDateString = nextDate.toISOString().split("T")[0];
+
+        loadSummary(currentDateString, nextDateString);
+
         setPrevDayAmount(Number(data.cashFromPrevDay ?? 0));
 
-        const currentDate = new Date(data.currentDate);
         const today = new Date();
 
         currentDate.setHours(0, 0, 0, 0);
