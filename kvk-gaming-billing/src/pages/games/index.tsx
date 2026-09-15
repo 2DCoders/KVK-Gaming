@@ -1,5 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import type { ChangeEvent, DragEvent, ReactNode } from "react";
+import type {
+  ChangeEvent,
+  DragEvent,
+  ReactNode,
+} from "react";
 import { createPortal } from "react-dom";
 import {
   Activity,
@@ -16,11 +20,19 @@ import {
   Upload,
   X,
 } from "lucide-react";
-import { createGame, getGames, updateGame } from "@/services/game-api";
+import {
+  createGame,
+  deleteGame as deleteGameApi,
+  getGames,
+  updateGame,
+} from "@/services/game-api";
 
+/* -------------------------------------------------------------------------- */
+/* Types                                                                      */
+/* -------------------------------------------------------------------------- */
 
 type Game = {
-  id: number;
+  id: string;
   name: string;
   description: string;
   image?: string | null;
@@ -28,7 +40,7 @@ type Game = {
 };
 
 type GameForm = {
-  id?: number;
+  id?: string;
   name: string;
   description: string;
   isActive: boolean;
@@ -44,27 +56,48 @@ const PAGE_SIZE = 10;
 
 const getValue = (
   obj: any,
-  camelCase: string,
-  pascalCase: string
+  ...keys: string[]
 ) => {
-  return obj?.[camelCase] ?? obj?.[pascalCase];
+  return keys.reduce(
+    (value, key) => value ?? obj?.[key],
+    undefined
+  );
 };
 
 const normalizeGame = (item: any): Game => {
-  const rawId = getValue(item, "id", "Id");
+  const rawId = getValue(
+    item,
+    "id",
+    "Id",
+    "gameId",
+    "GameId",
+    "gameID",
+    "GameID",
+    "game_id",
+    "Game_Id",
+    "_id"
+  );
 
   return {
-    id: Number(rawId),
-    name: String(getValue(item, "name", "Name") ?? ""),
+    id: String(rawId ?? "").trim(),
+
+    name: String(
+      getValue(item, "name", "Name") ?? ""
+    ),
+
     description: String(
       getValue(item, "description", "Description") ?? ""
     ),
+
     image:
       getValue(item, "image", "Image") ??
       getValue(item, "imageUrl", "ImageUrl") ??
       null,
+
     isActive:
-      Boolean(getValue(item, "isActive", "IsActive")) === true,
+      Boolean(
+        getValue(item, "isActive", "IsActive")
+      ) === true,
   };
 };
 
@@ -79,9 +112,13 @@ const extractGames = (response: any): Game[] => {
     list = data.response;
   } else if (Array.isArray(data?.Response)) {
     list = data.Response;
-  } else if (Array.isArray(data?.additionalData?.response)) {
+  } else if (
+    Array.isArray(data?.additionalData?.response)
+  ) {
     list = data.additionalData.response;
-  } else if (Array.isArray(data?.additionalData?.Response)) {
+  } else if (
+    Array.isArray(data?.additionalData?.Response)
+  ) {
     list = data.additionalData.Response;
   } else if (Array.isArray(data?.raw)) {
     list = data.raw;
@@ -127,7 +164,9 @@ const SummaryCard = ({
     <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow-md">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-sm font-medium text-slate-500">{title}</p>
+          <p className="text-sm font-medium text-slate-500">
+            {title}
+          </p>
 
           <p className="mt-2 text-2xl font-bold tracking-tight text-slate-900">
             {value}
@@ -150,7 +189,11 @@ const SummaryCard = ({
 /* Status Badge                                                               */
 /* -------------------------------------------------------------------------- */
 
-const StatusBadge = ({ isActive }: { isActive: boolean }) => {
+const StatusBadge = ({
+  isActive,
+}: {
+  isActive: boolean;
+}) => {
   return (
     <span
       className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${
@@ -161,7 +204,9 @@ const StatusBadge = ({ isActive }: { isActive: boolean }) => {
     >
       <span
         className={`h-1.5 w-1.5 rounded-full ${
-          isActive ? "bg-emerald-500" : "bg-slate-400"
+          isActive
+            ? "bg-emerald-500"
+            : "bg-slate-400"
         }`}
       />
 
@@ -189,7 +234,7 @@ const LoadingOverlay = () => {
 };
 
 /* -------------------------------------------------------------------------- */
-/* Alert                                                                       */
+/* Alert                                                                      */
 /* -------------------------------------------------------------------------- */
 
 const AlertMessage = ({
@@ -224,7 +269,9 @@ const AlertMessage = ({
           )}
         </div>
 
-        <p className="text-sm font-medium">{message}</p>
+        <p className="text-sm font-medium">
+          {message}
+        </p>
       </div>
 
       <button
@@ -256,7 +303,9 @@ const EmptyState = ({
       </div>
 
       <h3 className="mt-5 text-base font-semibold text-slate-900">
-        {search ? "No games found" : "No games available"}
+        {search
+          ? "No games found"
+          : "No games available"}
       </h3>
 
       <p className="mt-2 max-w-sm text-sm leading-6 text-slate-500">
@@ -305,26 +354,45 @@ const GameModal = ({
   dragging: boolean;
   submitting: boolean;
   onClose: () => void;
-  onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
+  onSubmit: (
+    e: React.FormEvent<HTMLFormElement>
+  ) => void;
   onChange: (
-    e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+    e: ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement
+    >
   ) => void;
   onImageChange: (file: File | null) => void;
-  onDrop: (e: DragEvent<HTMLDivElement>) => void;
-  onDragOver: (e: DragEvent<HTMLDivElement>) => void;
+  onDrop: (
+    e: DragEvent<HTMLDivElement>
+  ) => void;
+  onDragOver: (
+    e: DragEvent<HTMLDivElement>
+  ) => void;
   onDragLeave: () => void;
 }) => {
   return createPortal(
-    <div className="fixed inset-0 z-[99990] flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm">
+    <div
+      className="fixed inset-0 z-[99990] flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) {
+          if (!submitting) {
+            onClose();
+          }
+        }
+      }}
+    >
       <div
         className="flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
           <div>
             <h2 className="text-lg font-bold text-slate-900">
-              {mode === "create" ? "Add Game" : "Update Game"}
+              {mode === "create"
+                ? "Add Game"
+                : "Update Game"}
             </h2>
 
             <p className="mt-0.5 text-sm text-slate-500">
@@ -354,7 +422,9 @@ const GameModal = ({
             <div>
               <label className="mb-2 block text-sm font-semibold text-slate-700">
                 Game Name
-                <span className="ml-1 text-red-500">*</span>
+                <span className="ml-1 text-red-500">
+                  *
+                </span>
               </label>
 
               <input
@@ -410,18 +480,21 @@ const GameModal = ({
 
                     <div className="absolute inset-x-0 bottom-0 flex items-center justify-between bg-gradient-to-t from-black/70 to-transparent p-4 pt-12">
                       <span className="truncate pr-3 text-xs font-medium text-white">
-                        {imageFile?.name ?? "Current image"}
+                        {imageFile?.name ??
+                          "Current image"}
                       </span>
 
                       <label className="shrink-0 cursor-pointer rounded-lg bg-white/95 px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-white">
                         Change
+
                         <input
                           type="file"
                           accept="image/*"
                           className="hidden"
                           onChange={(e) =>
                             onImageChange(
-                              e.target.files?.[0] ?? null
+                              e.target.files?.[0] ??
+                                null
                             )
                           }
                         />
@@ -454,7 +527,8 @@ const GameModal = ({
                       className="hidden"
                       onChange={(e) =>
                         onImageChange(
-                          e.target.files?.[0] ?? null
+                          e.target.files?.[0] ??
+                            null
                         )
                       }
                     />
@@ -465,15 +539,15 @@ const GameModal = ({
 
             {/* Status */}
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-              <label className="flex cursor-pointer items-center justify-between gap-4">
+              <div className="flex items-center justify-between gap-4">
                 <div>
                   <p className="text-sm font-semibold text-slate-800">
                     Game Status
                   </p>
 
                   <p className="mt-1 text-xs text-slate-500">
-                    Enable this game when it is available for
-                    customers.
+                    Enable this game when it is available
+                    for customers.
                   </p>
                 </div>
 
@@ -503,7 +577,7 @@ const GameModal = ({
                     }`}
                   />
                 </button>
-              </label>
+              </div>
             </div>
           </div>
 
@@ -545,14 +619,30 @@ const GameModal = ({
 
 const DeleteConfirmModal = ({
   game,
+  deleting,
   onClose,
+  onConfirm,
 }: {
   game: Game;
+  deleting: boolean;
   onClose: () => void;
+  onConfirm: () => void;
 }) => {
   return createPortal(
-    <div className="fixed inset-0 z-[99991] flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
+    <div
+      className="fixed inset-0 z-[99991] flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) {
+          if (!deleting) {
+            onClose();
+          }
+        }
+      }}
+    >
+      <div
+        className="w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
+        onMouseDown={(e) => e.stopPropagation()}
+      >
         <div className="p-6">
           <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-red-50 text-red-600">
             <Trash2 size={22} />
@@ -569,28 +659,29 @@ const DeleteConfirmModal = ({
             </span>
             ?
           </p>
-
-          <p className="mt-2 text-xs text-slate-400">
-            The delete API is not included in the current game
-            service, so no backend deletion will be performed yet.
-          </p>
         </div>
 
         <div className="flex flex-col-reverse gap-3 border-t border-slate-200 bg-slate-50/70 px-6 py-4 sm:flex-row sm:justify-end">
           <button
             type="button"
             onClick={onClose}
-            className="w-full cursor-pointer rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 sm:w-auto"
+            disabled={deleting}
+            className="w-full cursor-pointer rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
           >
             Cancel
           </button>
 
           <button
             type="button"
-            onClick={onClose}
-            className="w-full cursor-pointer rounded-xl bg-red-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-red-700 sm:w-auto"
+            onClick={onConfirm}
+            disabled={deleting}
+            className="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-red-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
           >
-            Close
+            {deleting && (
+              <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+            )}
+
+            Delete
           </button>
         </div>
       </div>
@@ -600,7 +691,7 @@ const DeleteConfirmModal = ({
 };
 
 /* -------------------------------------------------------------------------- */
-/* Page                                                                        */
+/* Page                                                                       */
 /* -------------------------------------------------------------------------- */
 
 const GamePage = () => {
@@ -616,21 +707,17 @@ const GamePage = () => {
   const [modalMode, setModalMode] =
     useState<ModalMode>("create");
 
-  const [selectedGame, setSelectedGame] =
-    useState<Game | null>(null);
-
   const [form, setForm] = useState<GameForm>({
     name: "",
     description: "",
     isActive: true,
   });
 
-  const [imageFile, setImageFile] = useState<File | null>(
-    null
-  );
-  const [imagePreview, setImagePreview] = useState<
-    string | null
-  >(null);
+  const [imageFile, setImageFile] =
+    useState<File | null>(null);
+
+  const [imagePreview, setImagePreview] =
+    useState<string | null>(null);
 
   const [dragging, setDragging] = useState(false);
 
@@ -639,20 +726,22 @@ const GamePage = () => {
     message: string;
   } | null>(null);
 
-  /* ------------------------------- Action Menu ---------------------------- */
+  /* ------------------------------------------------------------------------ */
+  /* Action Menu State                                                        */
+  /* ------------------------------------------------------------------------ */
 
-  const [openMenuId, setOpenMenuId] = useState<number | null>(
-    null
-  );
+  const [openMenuGame, setOpenMenuGame] =
+    useState<Game | null>(null);
 
   const [menuPosition, setMenuPosition] = useState<{
     top: number;
     left: number;
   } | null>(null);
 
-  const [deleteGame, setDeleteGame] = useState<Game | null>(
-    null
-  );
+  const [deleteGame, setDeleteGame] =
+    useState<Game | null>(null);
+
+  const [deleting, setDeleting] = useState(false);
 
   /* ------------------------------------------------------------------------ */
   /* Load Games                                                               */
@@ -663,11 +752,15 @@ const GamePage = () => {
       setLoading(true);
 
       const response = await getGames();
+
       const normalized = extractGames(response);
 
       setGames(normalized);
     } catch (error) {
-      console.error("Failed to load games:", error);
+      console.error(
+        "Failed to load games:",
+        error
+      );
 
       setAlert({
         type: "error",
@@ -687,51 +780,68 @@ const GamePage = () => {
   /* ------------------------------------------------------------------------ */
 
   useEffect(() => {
-    const handleResize = () => {
-      setOpenMenuId(null);
+    const closeMenu = () => {
+      setOpenMenuGame(null);
       setMenuPosition(null);
     };
 
-    const handleScroll = () => {
-      if (openMenuId !== null) {
-        setOpenMenuId(null);
-        setMenuPosition(null);
-      }
-    };
+    window.addEventListener(
+      "resize",
+      closeMenu
+    );
 
-    window.addEventListener("resize", handleResize);
-    window.addEventListener("scroll", handleScroll, true);
+    window.addEventListener(
+      "scroll",
+      closeMenu,
+      true
+    );
 
     return () => {
-      window.removeEventListener("resize", handleResize);
-      window.removeEventListener("scroll", handleScroll, true);
+      window.removeEventListener(
+        "resize",
+        closeMenu
+      );
+
+      window.removeEventListener(
+        "scroll",
+        closeMenu,
+        true
+      );
     };
-  }, [openMenuId]);
+  }, []);
 
   /* ------------------------------------------------------------------------ */
   /* Search                                                                   */
   /* ------------------------------------------------------------------------ */
 
   const filteredGames = useMemo(() => {
-    const keyword = search.trim().toLowerCase();
+    const keyword = search
+      .trim()
+      .toLowerCase();
 
     if (!keyword) return games;
 
     return games.filter((game) => {
       return (
-        game.name.toLowerCase().includes(keyword) ||
-        game.description.toLowerCase().includes(keyword)
+        game.name
+          .toLowerCase()
+          .includes(keyword) ||
+        game.description
+          .toLowerCase()
+          .includes(keyword)
       );
     });
   }, [games, search]);
 
   /* ------------------------------------------------------------------------ */
-  /* Pagination                                                                */
+  /* Pagination                                                               */
   /* ------------------------------------------------------------------------ */
 
   const totalPages = Math.max(
     1,
-    Math.ceil(filteredGames.length / PAGE_SIZE)
+    Math.ceil(
+      filteredGames.length / PAGE_SIZE
+    )
   );
 
   const safeCurrentPage = Math.min(
@@ -740,10 +850,17 @@ const GamePage = () => {
   );
 
   const paginatedGames = useMemo(() => {
-    const start = (safeCurrentPage - 1) * PAGE_SIZE;
+    const start =
+      (safeCurrentPage - 1) * PAGE_SIZE;
 
-    return filteredGames.slice(start, start + PAGE_SIZE);
-  }, [filteredGames, safeCurrentPage]);
+    return filteredGames.slice(
+      start,
+      start + PAGE_SIZE
+    );
+  }, [
+    filteredGames,
+    safeCurrentPage,
+  ]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -753,7 +870,10 @@ const GamePage = () => {
     if (currentPage > totalPages) {
       setCurrentPage(totalPages);
     }
-  }, [currentPage, totalPages]);
+  }, [
+    currentPage,
+    totalPages,
+  ]);
 
   /* ------------------------------------------------------------------------ */
   /* Statistics                                                               */
@@ -782,10 +902,12 @@ const GamePage = () => {
 
     setImageFile(null);
     setImagePreview(null);
-    setSelectedGame(null);
   };
 
   const openCreateModal = () => {
+    setOpenMenuGame(null);
+    setMenuPosition(null);
+
     resetForm();
 
     setModalMode("create");
@@ -793,8 +915,6 @@ const GamePage = () => {
   };
 
   const openEditModal = (game: Game) => {
-    setSelectedGame(game);
-
     setForm({
       id: game.id,
       name: game.name,
@@ -803,7 +923,10 @@ const GamePage = () => {
     });
 
     setImageFile(null);
-    setImagePreview(getImageSrc(game.image));
+
+    setImagePreview(
+      getImageSrc(game.image)
+    );
 
     setModalMode("edit");
     setModalOpen(true);
@@ -817,7 +940,9 @@ const GamePage = () => {
   };
 
   const handleFormChange = (
-    e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+    e: ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement
+    >
   ) => {
     const { name, value } = e.target;
 
@@ -843,13 +968,16 @@ const GamePage = () => {
   /* Image Upload                                                             */
   /* ------------------------------------------------------------------------ */
 
-  const handleImageChange = (file: File | null) => {
+  const handleImageChange = (
+    file: File | null
+  ) => {
     if (!file) return;
 
     if (!file.type.startsWith("image/")) {
       setAlert({
         type: "error",
-        message: "Please select a valid image file.",
+        message:
+          "Please select a valid image file.",
       });
 
       return;
@@ -860,25 +988,32 @@ const GamePage = () => {
     const reader = new FileReader();
 
     reader.onload = () => {
-      setImagePreview(reader.result as string);
+      setImagePreview(
+        reader.result as string
+      );
     };
 
     reader.readAsDataURL(file);
   };
 
-  const handleDrop = (e: DragEvent<HTMLDivElement>) => {
+  const handleDrop = (
+    e: DragEvent<HTMLDivElement>
+  ) => {
     e.preventDefault();
 
     setDragging(false);
 
-    const file = e.dataTransfer.files?.[0];
+    const file =
+      e.dataTransfer.files?.[0];
 
     if (file) {
       handleImageChange(file);
     }
   };
 
-  const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
+  const handleDragOver = (
+    e: DragEvent<HTMLDivElement>
+  ) => {
     e.preventDefault();
     setDragging(true);
   };
@@ -899,7 +1034,29 @@ const GamePage = () => {
     if (!form.name.trim()) {
       setAlert({
         type: "error",
-        message: "Game name is required.",
+        message:
+          "Game name is required.",
+      });
+
+      return;
+    }
+
+    /*
+     * For edit mode, validate and capture the ID.
+     *
+     * This removes the TypeScript error because
+     * gameId is now guaranteed to be a string.
+     */
+    const gameId = form.id?.trim();
+
+    if (
+      modalMode === "edit" &&
+      !gameId
+    ) {
+      setAlert({
+        type: "error",
+        message:
+          "Unable to update this game because its ID is invalid.",
       });
 
       return;
@@ -910,22 +1067,26 @@ const GamePage = () => {
 
       const formData = new FormData();
 
-      if (modalMode === "edit" && form.id) {
-        formData.append("Id", String(form.id));
-      }
+      formData.append(
+        "Name",
+        form.name.trim()
+      );
 
-      formData.append("Name", form.name.trim());
       formData.append(
         "Description",
         form.description.trim()
       );
+
       formData.append(
         "IsActive",
         String(form.isActive)
       );
 
       if (imageFile) {
-        formData.append("Image", imageFile);
+        formData.append(
+          "Image",
+          imageFile
+        );
       }
 
       if (modalMode === "create") {
@@ -933,23 +1094,38 @@ const GamePage = () => {
 
         setAlert({
           type: "success",
-          message: "Game created successfully.",
+          message:
+            "Game created successfully.",
         });
       } else {
+        /*
+         * gameId is narrowed to string here because
+         * the edit-mode validation above guarantees it.
+         */
+        formData.append(
+          "Id",
+          gameId!
+        );
+
         await updateGame(formData);
 
         setAlert({
           type: "success",
-          message: "Game updated successfully.",
+          message:
+            "Game updated successfully.",
         });
       }
 
       setModalOpen(false);
+
       resetForm();
 
       await loadGames();
     } catch (error) {
-      console.error("Failed to save game:", error);
+      console.error(
+        "Failed to save game:",
+        error
+      );
 
       setAlert({
         type: "error",
@@ -964,18 +1140,59 @@ const GamePage = () => {
   };
 
   /* ------------------------------------------------------------------------ */
+  /* Delete                                                                   */
+  /* ------------------------------------------------------------------------ */
+
+  const handleDelete = async () => {
+    if (!deleteGame) return;
+
+    try {
+      setDeleting(true);
+
+      await deleteGameApi(
+        deleteGame.id
+      );
+
+      setDeleteGame(null);
+
+      setAlert({
+        type: "success",
+        message:
+          "Game deleted successfully.",
+      });
+
+      await loadGames();
+    } catch (error) {
+      console.error(
+        "Failed to delete game:",
+        error
+      );
+
+      setAlert({
+        type: "error",
+        message:
+          "Failed to delete game.",
+      });
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  /* ------------------------------------------------------------------------ */
   /* Action Menu                                                              */
   /* ------------------------------------------------------------------------ */
 
   const handleActionMenuClick = (
     e: React.MouseEvent<HTMLButtonElement>,
-    gameId: number
+    game: Game
   ) => {
     e.preventDefault();
     e.stopPropagation();
 
-    if (openMenuId === gameId) {
-      setOpenMenuId(null);
+    if (
+      openMenuGame?.id === game.id
+    ) {
+      setOpenMenuGame(null);
       setMenuPosition(null);
       return;
     }
@@ -988,12 +1205,16 @@ const GamePage = () => {
     const spacing = 8;
     const viewportPadding = 12;
 
-    let left = rect.right - menuWidth;
-    let top = rect.bottom + spacing;
+    let left =
+      rect.right - menuWidth;
+
+    let top =
+      rect.bottom + spacing;
 
     if (
       left + menuWidth >
-      window.innerWidth - viewportPadding
+      window.innerWidth -
+        viewportPadding
     ) {
       left =
         window.innerWidth -
@@ -1001,18 +1222,26 @@ const GamePage = () => {
         viewportPadding;
     }
 
-    if (left < viewportPadding) {
+    if (
+      left < viewportPadding
+    ) {
       left = viewportPadding;
     }
 
     if (
       top + menuHeight >
-      window.innerHeight - viewportPadding
+      window.innerHeight -
+        viewportPadding
     ) {
-      top = rect.top - menuHeight - spacing;
+      top =
+        rect.top -
+        menuHeight -
+        spacing;
     }
 
-    if (top < viewportPadding) {
+    if (
+      top < viewportPadding
+    ) {
       top = viewportPadding;
     }
 
@@ -1021,7 +1250,7 @@ const GamePage = () => {
       left,
     });
 
-    setOpenMenuId(gameId);
+    setOpenMenuGame(game);
   };
 
   /* ------------------------------------------------------------------------ */
@@ -1029,7 +1258,8 @@ const GamePage = () => {
   /* ------------------------------------------------------------------------ */
 
   const actionMenu =
-    openMenuId !== null && menuPosition
+    openMenuGame &&
+    menuPosition
       ? createPortal(
           <div
             className="fixed z-[999999] w-44 overflow-hidden rounded-xl border border-slate-200 bg-white p-1.5 shadow-2xl"
@@ -1047,17 +1277,23 @@ const GamePage = () => {
             {/* Update */}
             <button
               type="button"
-              onClick={() => {
-                const game = games.find(
-                  (item) => item.id === openMenuId
-                );
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
 
-                setOpenMenuId(null);
+                const selectedGame =
+                  openMenuGame;
+
+                if (!selectedGame) return;
+
+                setOpenMenuGame(null);
                 setMenuPosition(null);
 
-                if (game) {
-                  openEditModal(game);
-                }
+                requestAnimationFrame(() => {
+                  openEditModal(
+                    selectedGame
+                  );
+                });
               }}
               className="flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-slate-700 transition hover:bg-red-50 hover:text-red-700"
             >
@@ -1071,17 +1307,23 @@ const GamePage = () => {
             {/* Delete */}
             <button
               type="button"
-              onClick={() => {
-                const game = games.find(
-                  (item) => item.id === openMenuId
-                );
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
 
-                setOpenMenuId(null);
+                const selectedGame =
+                  openMenuGame;
+
+                if (!selectedGame) return;
+
+                setOpenMenuGame(null);
                 setMenuPosition(null);
 
-                if (game) {
-                  setDeleteGame(game);
-                }
+                requestAnimationFrame(() => {
+                  setDeleteGame(
+                    selectedGame
+                  );
+                });
               }}
               className="flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-red-600 transition hover:bg-red-50"
             >
@@ -1115,26 +1357,34 @@ const GamePage = () => {
           onClose={closeModal}
           onSubmit={handleSubmit}
           onChange={handleFormChange}
-          onImageChange={handleImageChange}
+          onImageChange={
+            handleImageChange
+          }
           onDrop={handleDrop}
           onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
+          onDragLeave={
+            handleDragLeave
+          }
         />
       )}
 
       {deleteGame && (
         <DeleteConfirmModal
           game={deleteGame}
-          onClose={() => setDeleteGame(null)}
+          deleting={deleting}
+          onClose={() => {
+            if (!deleting) {
+              setDeleteGame(null);
+            }
+          }}
+          onConfirm={handleDelete}
         />
       )}
 
       <main className="min-h-screen bg-slate-50 p-4 sm:p-6 lg:p-8">
         <div className="mx-auto max-w-[1600px]">
-          {/* ---------------------------------------------------------------- */}
-          {/* Header                                                           */}
-          {/* ---------------------------------------------------------------- */}
 
+          {/* Header */}
           <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <div className="flex items-center gap-3">
@@ -1148,7 +1398,8 @@ const GamePage = () => {
                   </h1>
 
                   <p className="mt-0.5 text-sm text-slate-500">
-                    Manage gaming centre games and availability.
+                    Manage gaming centre games
+                    and availability.
                   </p>
                 </div>
               </div>
@@ -1156,7 +1407,9 @@ const GamePage = () => {
 
             <button
               type="button"
-              onClick={openCreateModal}
+              onClick={
+                openCreateModal
+              }
               className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-red-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-red-700 hover:shadow-md"
             >
               <Plus size={18} />
@@ -1164,35 +1417,35 @@ const GamePage = () => {
             </button>
           </div>
 
-          {/* ---------------------------------------------------------------- */}
-          {/* Alert                                                            */}
-          {/* ---------------------------------------------------------------- */}
-
+          {/* Alert */}
           {alert && (
             <AlertMessage
               message={alert.message}
               type={alert.type}
-              onClose={() => setAlert(null)}
+              onClose={() =>
+                setAlert(null)
+              }
             />
           )}
 
-          {/* ---------------------------------------------------------------- */}
-          {/* Summary                                                          */}
-          {/* ---------------------------------------------------------------- */}
-
+          {/* Summary */}
           <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
             <SummaryCard
               title="Total Games"
               value={totalGames}
               description="All registered games"
-              icon={<Gamepad2 size={21} />}
+              icon={
+                <Gamepad2 size={21} />
+              }
             />
 
             <SummaryCard
               title="Active Games"
               value={activeGames}
               description="Currently available"
-              icon={<Activity size={21} />}
+              icon={
+                <Activity size={21} />
+              }
             />
 
             <SummaryCard
@@ -1203,12 +1456,11 @@ const GamePage = () => {
             />
           </div>
 
-          {/* ---------------------------------------------------------------- */}
-          {/* Main Card                                                        */}
-          {/* ---------------------------------------------------------------- */}
-
+          {/* Main Card */}
           <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-            {loading && <LoadingOverlay />}
+            {loading && (
+              <LoadingOverlay />
+            )}
 
             {/* Toolbar */}
             <div className="border-b border-slate-200 p-4 sm:p-5">
@@ -1220,7 +1472,8 @@ const GamePage = () => {
 
                   <p className="mt-1 text-xs text-slate-500">
                     {filteredGames.length}{" "}
-                    {filteredGames.length === 1
+                    {filteredGames.length ===
+                    1
                       ? "game"
                       : "games"}{" "}
                     found
@@ -1237,7 +1490,9 @@ const GamePage = () => {
                     type="text"
                     value={search}
                     onChange={(e) =>
-                      setSearch(e.target.value)
+                      setSearch(
+                        e.target.value
+                      )
                     }
                     placeholder="Search games..."
                     className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-red-500 focus:bg-white focus:ring-4 focus:ring-red-500/10"
@@ -1246,7 +1501,9 @@ const GamePage = () => {
                   {search && (
                     <button
                       type="button"
-                      onClick={() => setSearch("")}
+                      onClick={() =>
+                        setSearch("")
+                      }
                       className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer text-slate-400 transition hover:text-slate-700"
                     >
                       <X size={16} />
@@ -1256,15 +1513,15 @@ const GamePage = () => {
               </div>
             </div>
 
-            {/* ---------------------------------------------------------------- */}
-            {/* Desktop Table                                                    */}
-            {/* ---------------------------------------------------------------- */}
-
+            {/* Desktop Table */}
             <div className="hidden overflow-x-auto md:block">
-              {paginatedGames.length === 0 ? (
+              {paginatedGames.length ===
+              0 ? (
                 <EmptyState
                   search={search}
-                  onCreate={openCreateModal}
+                  onCreate={
+                    openCreateModal
+                  }
                 />
               ) : (
                 <table className="w-full min-w-[760px]">
@@ -1289,232 +1546,300 @@ const GamePage = () => {
                   </thead>
 
                   <tbody className="divide-y divide-slate-100">
-                    {paginatedGames.map((game) => {
-                      const imageSrc = getImageSrc(game.image);
+                    {paginatedGames.map(
+                      (game) => {
+                        const imageSrc =
+                          getImageSrc(
+                            game.image
+                          );
 
-                      return (
-                        <tr
-                          key={game.id}
-                          className="transition hover:bg-slate-50/70"
-                        >
-                          {/* Game */}
-                          <td className="px-5 py-4">
-                            <div className="flex min-w-0 items-center gap-3">
-                              <div className="h-12 w-12 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
-                                {imageSrc ? (
-                                  <img
-                                    src={imageSrc}
-                                    alt={game.name}
-                                    className="h-full w-full object-cover"
-                                  />
-                                ) : (
-                                  <div className="flex h-full w-full items-center justify-center text-slate-400">
-                                    <Gamepad2 size={20} />
-                                  </div>
-                                )}
+                        return (
+                          <tr
+                            key={game.id}
+                            className="transition hover:bg-slate-50/70"
+                          >
+                            <td className="px-5 py-4">
+                              <div className="flex min-w-0 items-center gap-3">
+                                <div className="h-12 w-12 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
+                                  {imageSrc ? (
+                                    <img
+                                      src={
+                                        imageSrc
+                                      }
+                                      alt={
+                                        game.name
+                                      }
+                                      className="h-full w-full object-cover"
+                                    />
+                                  ) : (
+                                    <div className="flex h-full w-full items-center justify-center text-slate-400">
+                                      <Gamepad2
+                                        size={
+                                          20
+                                        }
+                                      />
+                                    </div>
+                                  )}
+                                </div>
+
+                                <div className="min-w-0">
+                                  <p className="truncate text-sm font-semibold text-slate-900">
+                                    {
+                                      game.name
+                                    }
+                                  </p>
+
+                                  <p className="mt-0.5 text-xs text-slate-400">
+                                    Game #
+                                    {
+                                      game.id
+                                    }
+                                  </p>
+                                </div>
                               </div>
+                            </td>
 
-                              <div className="min-w-0">
-                                <p className="truncate text-sm font-semibold text-slate-900">
-                                  {game.name}
-                                </p>
+                            <td className="max-w-md px-5 py-4">
+                              <p className="line-clamp-2 text-sm leading-6 text-slate-500">
+                                {game.description ||
+                                  "No description available."}
+                              </p>
+                            </td>
 
-                                <p className="mt-0.5 text-xs text-slate-400">
-                                  Game #{game.id}
-                                </p>
-                              </div>
-                            </div>
-                          </td>
+                            <td className="px-5 py-4">
+                              <StatusBadge
+                                isActive={
+                                  game.isActive
+                                }
+                              />
+                            </td>
 
-                          {/* Description */}
-                          <td className="max-w-md px-5 py-4">
-                            <p className="line-clamp-2 text-sm leading-6 text-slate-500">
-                              {game.description ||
-                                "No description available."}
-                            </p>
-                          </td>
-
-                          {/* Status */}
-                          <td className="px-5 py-4">
-                            <StatusBadge
-                              isActive={game.isActive}
-                            />
-                          </td>
-
-                          {/* Action */}
-                          <td className="px-5 py-4 text-right">
-                            <button
-                              type="button"
-                              aria-label={`Actions for ${game.name}`}
-                              aria-expanded={
-                                openMenuId === game.id
-                              }
-                              onClick={(e) =>
-                                handleActionMenuClick(
-                                  e,
+                            <td className="px-5 py-4 text-right">
+                              <button
+                                type="button"
+                                aria-label={`Actions for ${game.name}`}
+                                aria-expanded={
+                                  openMenuGame?.id ===
                                   game.id
-                                )
-                              }
-                              className={`flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg transition ${
-                                openMenuId === game.id
-                                  ? "bg-red-50 text-red-700"
-                                  : "text-slate-400 hover:bg-red-50 hover:text-red-700"
-                              }`}
-                            >
-                              <MoreVertical size={18} />
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
+                                }
+                                onClick={(e) =>
+                                  handleActionMenuClick(
+                                    e,
+                                    game
+                                  )
+                                }
+                                className={`flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg transition ${
+                                  openMenuGame?.id ===
+                                  game.id
+                                    ? "bg-red-50 text-red-700"
+                                    : "text-slate-400 hover:bg-red-50 hover:text-red-700"
+                                }`}
+                              >
+                                <MoreVertical
+                                  size={18}
+                                />
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      }
+                    )}
                   </tbody>
                 </table>
               )}
             </div>
 
-            {/* ---------------------------------------------------------------- */}
-            {/* Mobile Cards                                                     */}
-            {/* ---------------------------------------------------------------- */}
-
+            {/* Mobile Cards */}
             <div className="md:hidden">
-              {paginatedGames.length === 0 ? (
+              {paginatedGames.length ===
+              0 ? (
                 <EmptyState
                   search={search}
-                  onCreate={openCreateModal}
+                  onCreate={
+                    openCreateModal
+                  }
                 />
               ) : (
                 <div className="divide-y divide-slate-100">
-                  {paginatedGames.map((game) => {
-                    const imageSrc = getImageSrc(game.image);
+                  {paginatedGames.map(
+                    (game) => {
+                      const imageSrc =
+                        getImageSrc(
+                          game.image
+                        );
 
-                    return (
-                      <div
-                        key={game.id}
-                        className="p-4 transition hover:bg-slate-50/60"
-                      >
-                        <div className="flex items-start gap-3">
-                          <div className="h-14 w-14 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
-                            {imageSrc ? (
-                              <img
-                                src={imageSrc}
-                                alt={game.name}
-                                className="h-full w-full object-cover"
-                              />
-                            ) : (
-                              <div className="flex h-full w-full items-center justify-center text-slate-400">
-                                <Gamepad2 size={21} />
-                              </div>
-                            )}
-                          </div>
+                      return (
+                        <div
+                          key={game.id}
+                          className="p-4 transition hover:bg-slate-50/60"
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className="h-14 w-14 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
+                              {imageSrc ? (
+                                <img
+                                  src={
+                                    imageSrc
+                                  }
+                                  alt={
+                                    game.name
+                                  }
+                                  className="h-full w-full object-cover"
+                                />
+                              ) : (
+                                <div className="flex h-full w-full items-center justify-center text-slate-400">
+                                  <Gamepad2
+                                    size={
+                                      21
+                                    }
+                                  />
+                                </div>
+                              )}
+                            </div>
 
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="min-w-0">
-                                <h3 className="truncate text-sm font-bold text-slate-900">
-                                  {game.name}
-                                </h3>
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="min-w-0">
+                                  <h3 className="truncate text-sm font-bold text-slate-900">
+                                    {
+                                      game.name
+                                    }
+                                  </h3>
 
-                                <p className="mt-0.5 text-xs text-slate-400">
-                                  Game #{game.id}
-                                </p>
-                              </div>
+                                  <p className="mt-0.5 text-xs text-slate-400">
+                                    Game #
+                                    {
+                                      game.id
+                                    }
+                                  </p>
+                                </div>
 
-                              <button
-                                type="button"
-                                aria-label={`Actions for ${game.name}`}
-                                aria-expanded={
-                                  openMenuId === game.id
-                                }
-                                onClick={(e) =>
-                                  handleActionMenuClick(
-                                    e,
+                                <button
+                                  type="button"
+                                  aria-label={`Actions for ${game.name}`}
+                                  aria-expanded={
+                                    openMenuGame?.id ===
                                     game.id
-                                  )
-                                }
-                                className={`flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-lg transition ${
-                                  openMenuId === game.id
-                                    ? "bg-red-50 text-red-700"
-                                    : "text-slate-400 hover:bg-red-50 hover:text-red-700"
-                                }`}
-                              >
-                                <MoreVertical size={18} />
-                              </button>
-                            </div>
+                                  }
+                                  onClick={(e) =>
+                                    handleActionMenuClick(
+                                      e,
+                                      game
+                                    )
+                                  }
+                                  className={`flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-lg transition ${
+                                    openMenuGame?.id ===
+                                    game.id
+                                      ? "bg-red-50 text-red-700"
+                                      : "text-slate-400 hover:bg-red-50 hover:text-red-700"
+                                  }`}
+                                >
+                                  <MoreVertical
+                                    size={
+                                      18
+                                    }
+                                  />
+                                </button>
+                              </div>
 
-                            <div className="mt-2">
-                              <StatusBadge
-                                isActive={game.isActive}
-                              />
+                              <div className="mt-2">
+                                <StatusBadge
+                                  isActive={
+                                    game.isActive
+                                  }
+                                />
+                              </div>
                             </div>
                           </div>
-                        </div>
 
-                        <p className="mt-3 line-clamp-3 text-sm leading-6 text-slate-500">
-                          {game.description ||
-                            "No description available."}
-                        </p>
-                      </div>
-                    );
-                  })}
+                          <p className="mt-3 line-clamp-3 text-sm leading-6 text-slate-500">
+                            {game.description ||
+                              "No description available."}
+                          </p>
+                        </div>
+                      );
+                    }
+                  )}
                 </div>
               )}
             </div>
 
-            {/* ---------------------------------------------------------------- */}
-            {/* Pagination                                                       */}
-            {/* ---------------------------------------------------------------- */}
-
-            {filteredGames.length > 0 && (
+            {/* Pagination */}
+            {filteredGames.length >
+              0 && (
               <div className="flex flex-col gap-3 border-t border-slate-200 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
                 <p className="text-xs text-slate-500">
                   Showing{" "}
                   <span className="font-semibold text-slate-700">
-                    {(safeCurrentPage - 1) * PAGE_SIZE + 1}
+                    {(safeCurrentPage -
+                      1) *
+                      PAGE_SIZE +
+                      1}
                   </span>{" "}
                   to{" "}
                   <span className="font-semibold text-slate-700">
                     {Math.min(
-                      safeCurrentPage * PAGE_SIZE,
+                      safeCurrentPage *
+                        PAGE_SIZE,
                       filteredGames.length
                     )}
                   </span>{" "}
                   of{" "}
                   <span className="font-semibold text-slate-700">
-                    {filteredGames.length}
+                    {
+                      filteredGames.length
+                    }
                   </span>
                 </p>
 
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    disabled={safeCurrentPage <= 1}
+                    disabled={
+                      safeCurrentPage <=
+                      1
+                    }
                     onClick={() =>
-                      setCurrentPage((prev) =>
-                        Math.max(1, prev - 1)
+                      setCurrentPage(
+                        (prev) =>
+                          Math.max(
+                            1,
+                            prev - 1
+                          )
                       )
                     }
                     className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-40"
                   >
-                    <ChevronLeft size={17} />
+                    <ChevronLeft
+                      size={17}
+                    />
                   </button>
 
                   <div className="flex h-9 min-w-9 items-center justify-center rounded-lg bg-red-600 px-3 text-xs font-semibold text-white">
-                    {safeCurrentPage}
+                    {
+                      safeCurrentPage
+                    }
                   </div>
 
                   <button
                     type="button"
                     disabled={
-                      safeCurrentPage >= totalPages
+                      safeCurrentPage >=
+                      totalPages
                     }
                     onClick={() =>
-                      setCurrentPage((prev) =>
-                        Math.min(totalPages, prev + 1)
+                      setCurrentPage(
+                        (prev) =>
+                          Math.min(
+                            totalPages,
+                            prev + 1
+                          )
                       )
                     }
                     className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-40"
                   >
-                    <ChevronRight size={17} />
+                    <ChevronRight
+                      size={17}
+                    />
                   </button>
                 </div>
               </div>

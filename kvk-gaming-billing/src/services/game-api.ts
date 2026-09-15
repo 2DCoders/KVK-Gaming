@@ -53,7 +53,7 @@ export const updateGame = async (gameData: FormData) => {
     }
 }
 
-export const deleteGame = async (id: number) => {
+export const deleteGame = async (id: string | number) => {
   try {
     const response = await axios.delete(`${GAMES_API_URL}${id}`, {
       headers: {
