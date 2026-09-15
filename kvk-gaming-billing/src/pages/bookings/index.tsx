@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
 import { Calendar, ChevronRight } from "lucide-react";
 import { getCategories } from "@/services/categories-api";
-import { getNextWorkingDays } from "@/services/holiday-api";
 import { getGamingStationsByCategory } from "@/services/gaming-stations-api";
 import { getSlotsAvailability } from "@/services/slots-api";
 import { multiHoldBooking } from "@/services/bookings-api";
 import { useNavigate } from "react-router-dom";
+import { getNextWorkingDays } from "@/services/holidays-api";
 
 export default function Bookings() {
   const [selectedDate, setSelectedDate] = useState(0);

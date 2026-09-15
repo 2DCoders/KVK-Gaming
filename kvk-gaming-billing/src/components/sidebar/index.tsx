@@ -1,5 +1,5 @@
 import { useLocation, useNavigate } from "react-router-dom";
-import { CheckSquare, Settings, ChevronDown, Calendar } from "lucide-react";
+import { CheckSquare, Settings, ChevronDown, Calendar, Gamepad2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { getCategories } from "@/services/categories-api";
 import { getDayEndData } from "@/services/dayend-api";
@@ -116,6 +116,13 @@ export default function Sidebar({ isOpen, isMobile, onClose }: SidebarProps) {
           path: "/movie-rooms-settings",
         },
       ],
+    },
+    {
+      id: "games",
+      label: "Games",
+      icon: Gamepad2,
+      path: "/games",
+      submenu: null,
     },
     {
       id: "bookings",
