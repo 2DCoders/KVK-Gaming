@@ -594,7 +594,7 @@ const GameModal = ({
                       isActive: !prev.isActive,
                     }))
                   }
-                  className={`flex w-full items-center justify-between rounded-xl border px-4 py-3 text-left transition ${
+                  className={`flex w-full cursor-pointer items-center justify-between rounded-xl border px-4 py-3 text-left transition ${
                     form.isActive
                       ? "border-emerald-200 bg-emerald-50/60"
                       : "border-slate-200 bg-slate-50"
@@ -677,7 +677,7 @@ const GameModal = ({
             <button
               type="button"
               onClick={onClose}
-              className="h-11 rounded-xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+              className="h-11 rounded-xl border cursor-pointer border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
             >
               {isView ? "Close" : "Cancel"}
             </button>
@@ -686,7 +686,7 @@ const GameModal = ({
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-red-700 px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-red-800 disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex h-11 items-center cursor-pointer justify-center gap-2 rounded-xl bg-red-700 px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-red-800 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {isSubmitting ? (
                   <>
@@ -1147,9 +1147,9 @@ const GamePage = () => {
           <div className="flex w-full gap-2 sm:w-auto">
             <button
               type="button"
-              onClick={loadGames}
+              onClick={() => window.location.reload()}
               disabled={isLoading}
-              className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-red-200 hover:bg-red-50 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-60 sm:flex-none"
+              className="inline-flex cursor-pointer h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-red-200 hover:bg-red-50 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-60 sm:flex-none"
             >
               <RefreshCw
                 size={17}
@@ -1161,7 +1161,7 @@ const GamePage = () => {
             <button
               type="button"
               onClick={openCreateModal}
-              className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-red-700 px-4 text-sm font-semibold text-white shadow-sm shadow-red-700/20 transition hover:bg-red-800 sm:flex-none"
+              className="inline-flex cursor-pointer h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-red-700 px-4 text-sm font-semibold text-white shadow-sm shadow-red-700/20 transition hover:bg-red-800 sm:flex-none"
             >
               <Plus size={18} />
               <span>Add Game</span>
@@ -1337,7 +1337,7 @@ const GamePage = () => {
                                     : game.id
                                 )
                               }
-                              className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition hover:bg-red-50 hover:text-red-700"
+                              className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg text-slate-400 transition hover:bg-red-50 hover:text-red-700"
                             >
                               <MoreVertical size={18} />
                             </button>
