@@ -1,25 +1,20 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import type { DragEvent, ChangeEvent, FormEvent } from "react";
+import { useEffect, useMemo, useState } from "react";
+import type { ChangeEvent, DragEvent, ReactNode } from "react";
 import { createPortal } from "react-dom";
 import {
-  AlertCircle,
+  Activity,
   Check,
-  CheckCircle2,
   ChevronLeft,
   ChevronRight,
-  CircleDot,
   Edit3,
-  Eye,
   Gamepad2,
-  Image as ImageIcon,
-  Loader2,
+  ImagePlus,
   MoreVertical,
   Plus,
-  RefreshCw,
   Search,
+  Trash2,
   Upload,
   X,
-  Zap,
 } from "lucide-react";
 import { createGame, getGames, updateGame } from "@/services/game-api";
 
@@ -28,7 +23,7 @@ type Game = {
   id: number;
   name: string;
   description: string;
-  image: string;
+  image?: string | null;
   isActive: boolean;
 };
 
@@ -39,122 +34,97 @@ type GameForm = {
   isActive: boolean;
 };
 
-type PageAlert = {
-  type: "success" | "error";
-  message: string;
-} | null;
+type ModalMode = "create" | "edit";
 
-const ITEMS_PER_PAGE_OPTIONS = [5, 10, 20];
+const PAGE_SIZE = 10;
 
-const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
+/* -------------------------------------------------------------------------- */
+/* Helpers                                                                    */
+/* -------------------------------------------------------------------------- */
 
-const ALLOWED_IMAGE_TYPES = [
-  "image/jpeg",
-  "image/jpg",
-  "image/png",
-  "image/webp",
-];
-
-const normalizeBoolean = (value: unknown): boolean => {
-  if (typeof value === "boolean") return value;
-
-  if (typeof value === "number") {
-    return value === 1;
-  }
-
-  if (typeof value === "string") {
-    return (
-      value.toLowerCase() === "true" ||
-      value === "1" ||
-      value.toLowerCase() === "active"
-    );
-  }
-
-  return false;
+const getValue = (
+  obj: any,
+  camelCase: string,
+  pascalCase: string
+) => {
+  return obj?.[camelCase] ?? obj?.[pascalCase];
 };
 
 const normalizeGame = (item: any): Game => {
+  const rawId = getValue(item, "id", "Id");
+
   return {
-    id: Number(item?.id ?? item?.Id ?? 0),
-    name: String(item?.name ?? item?.Name ?? ""),
-    description: String(item?.description ?? item?.Description ?? ""),
-    image: String(
-      item?.image ??
-        item?.Image ??
-        item?.imageUrl ??
-        item?.ImageUrl ??
-        ""
+    id: Number(rawId),
+    name: String(getValue(item, "name", "Name") ?? ""),
+    description: String(
+      getValue(item, "description", "Description") ?? ""
     ),
-    isActive: normalizeBoolean(item?.isActive ?? item?.IsActive),
+    image:
+      getValue(item, "image", "Image") ??
+      getValue(item, "imageUrl", "ImageUrl") ??
+      null,
+    isActive:
+      Boolean(getValue(item, "isActive", "IsActive")) === true,
   };
 };
 
 const extractGames = (response: any): Game[] => {
-  const possibleData =
-    response?.additionalData?.response ??
-    response?.additionalData?.data ??
-    response?.response ??
-    response?.data ??
-    response;
+  const data = response?.data ?? response;
 
-  if (Array.isArray(possibleData)) {
-    return possibleData.map(normalizeGame);
+  let list: any[] = [];
+
+  if (Array.isArray(data)) {
+    list = data;
+  } else if (Array.isArray(data?.response)) {
+    list = data.response;
+  } else if (Array.isArray(data?.Response)) {
+    list = data.Response;
+  } else if (Array.isArray(data?.additionalData?.response)) {
+    list = data.additionalData.response;
+  } else if (Array.isArray(data?.additionalData?.Response)) {
+    list = data.additionalData.Response;
+  } else if (Array.isArray(data?.raw)) {
+    list = data.raw;
+  } else if (Array.isArray(data?.items)) {
+    list = data.items;
+  } else if (Array.isArray(data?.Items)) {
+    list = data.Items;
   }
 
-  if (Array.isArray(possibleData?.items)) {
-    return possibleData.items.map(normalizeGame);
-  }
-
-  if (Array.isArray(possibleData?.data)) {
-    return possibleData.data.map(normalizeGame);
-  }
-
-  return [];
+  return list.map(normalizeGame);
 };
 
-const getImageSource = (image?: string): string => {
-  if (!image) return "";
+const getImageSrc = (image?: string | null) => {
+  if (!image) return null;
 
   if (
     image.startsWith("http://") ||
     image.startsWith("https://") ||
-    image.startsWith("blob:") ||
     image.startsWith("data:")
   ) {
     return image;
   }
 
-  // Base64 image returned by API
-  if (/^[A-Za-z0-9+/=]+$/.test(image)) {
-    return `data:image/png;base64,${image}`;
-  }
-
-  return image;
+  return `data:image/png;base64,${image}`;
 };
 
-const formatDescription = (description: string) => {
-  if (!description) return "No description available";
-
-  return description.length > 110
-    ? `${description.substring(0, 110)}...`
-    : description;
-};
+/* -------------------------------------------------------------------------- */
+/* Summary Card                                                               */
+/* -------------------------------------------------------------------------- */
 
 const SummaryCard = ({
   title,
   value,
-  description,
   icon,
-  iconClassName,
+  description,
 }: {
   title: string;
-  value: string | number;
+  value: number;
+  icon: ReactNode;
   description: string;
-  icon: React.ReactNode;
-  iconClassName: string;
 }) => {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow-md">
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-sm font-medium text-slate-500">{title}</p>
@@ -163,12 +133,12 @@ const SummaryCard = ({
             {value}
           </p>
 
-          <p className="mt-1 text-xs text-slate-400">{description}</p>
+          <p className="mt-1 text-xs text-slate-400">
+            {description}
+          </p>
         </div>
 
-        <div
-          className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${iconClassName}`}
-        >
+        <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-red-50 text-red-600">
           {icon}
         </div>
       </div>
@@ -176,134 +146,9 @@ const SummaryCard = ({
   );
 };
 
-const LoadingOverlay = () => {
-  return createPortal(
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/30 p-4 backdrop-blur-[2px]">
-      <div className="flex min-w-[180px] flex-col items-center rounded-2xl border border-white/60 bg-white px-7 py-6 shadow-2xl">
-        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-50">
-          <Loader2 className="animate-spin text-red-700" size={24} />
-        </div>
-
-        <p className="mt-4 text-sm font-semibold text-slate-800">
-          Please wait...
-        </p>
-
-        <p className="mt-1 text-xs text-slate-400">
-          Processing your request
-        </p>
-      </div>
-    </div>,
-    document.body
-  );
-};
-
-const AlertMessage = ({
-  alert,
-  onClose,
-}: {
-  alert: PageAlert;
-  onClose: () => void;
-}) => {
-  if (!alert) return null;
-
-  const isSuccess = alert.type === "success";
-
-  return createPortal(
-    <div className="fixed right-4 top-4 z-[9998] w-[calc(100%-2rem)] max-w-sm">
-      <div
-        className={`flex items-start gap-3 rounded-2xl border bg-white p-4 shadow-xl ${
-          isSuccess ? "border-emerald-200" : "border-red-200"
-        }`}
-      >
-        <div
-          className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
-            isSuccess
-              ? "bg-emerald-50 text-emerald-600"
-              : "bg-red-50 text-red-600"
-          }`}
-        >
-          {isSuccess ? (
-            <CheckCircle2 size={19} />
-          ) : (
-            <AlertCircle size={19} />
-          )}
-        </div>
-
-        <div className="min-w-0 flex-1">
-          <p
-            className={`text-sm font-semibold ${
-              isSuccess ? "text-emerald-700" : "text-red-700"
-            }`}
-          >
-            {isSuccess ? "Success" : "Error"}
-          </p>
-
-          <p className="mt-1 text-sm leading-5 text-slate-600">
-            {alert.message}
-          </p>
-        </div>
-
-        <button
-          type="button"
-          onClick={onClose}
-          className="rounded-lg p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
-        >
-          <X size={16} />
-        </button>
-      </div>
-    </div>,
-    document.body
-  );
-};
-
-const EmptyState = ({
-  searchTerm,
-  onClear,
-  onAdd,
-}: {
-  searchTerm: string;
-  onClear: () => void;
-  onAdd: () => void;
-}) => {
-  return (
-    <div className="flex min-h-[360px] flex-col items-center justify-center px-6 py-16 text-center">
-      <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-red-50 text-red-700">
-        <Gamepad2 size={30} />
-      </div>
-
-      <h3 className="mt-5 text-base font-bold text-slate-900">
-        {searchTerm ? "No games found" : "No games available"}
-      </h3>
-
-      <p className="mt-2 max-w-md text-sm leading-6 text-slate-500">
-        {searchTerm
-          ? "Try adjusting your search term or clear the current search."
-          : "Start building your gaming centre by adding your first game."}
-      </p>
-
-      <div className="mt-5 flex flex-wrap justify-center gap-2">
-        {searchTerm ? (
-          <button
-            type="button"
-            onClick={onClear}
-            className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-red-200 hover:bg-red-50 hover:text-red-700"
-          >
-            Clear Search
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={onAdd}
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-red-700 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-red-800"
-          >
-            <Plus size={17} />
-            Add Game
-          </button>
-        )}
-      </div>
-    </div>
-  );
-};
+/* -------------------------------------------------------------------------- */
+/* Status Badge                                                               */
+/* -------------------------------------------------------------------------- */
 
 const StatusBadge = ({ isActive }: { isActive: boolean }) => {
   return (
@@ -325,382 +170,367 @@ const StatusBadge = ({ isActive }: { isActive: boolean }) => {
   );
 };
 
+/* -------------------------------------------------------------------------- */
+/* Loading Overlay                                                            */
+/* -------------------------------------------------------------------------- */
+
+const LoadingOverlay = () => {
+  return (
+    <div className="absolute inset-0 z-30 flex items-center justify-center bg-white/70 backdrop-blur-[2px]">
+      <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-5 py-3 shadow-lg">
+        <div className="h-5 w-5 animate-spin rounded-full border-2 border-slate-200 border-t-red-600" />
+
+        <span className="text-sm font-medium text-slate-700">
+          Loading games...
+        </span>
+      </div>
+    </div>
+  );
+};
+
+/* -------------------------------------------------------------------------- */
+/* Alert                                                                       */
+/* -------------------------------------------------------------------------- */
+
+const AlertMessage = ({
+  message,
+  type,
+  onClose,
+}: {
+  message: string;
+  type: "success" | "error";
+  onClose: () => void;
+}) => {
+  return (
+    <div
+      className={`mb-5 flex items-start justify-between gap-4 rounded-xl border px-4 py-3 ${
+        type === "success"
+          ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+          : "border-red-200 bg-red-50 text-red-800"
+      }`}
+    >
+      <div className="flex items-start gap-3">
+        <div
+          className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${
+            type === "success"
+              ? "bg-emerald-100"
+              : "bg-red-100"
+          }`}
+        >
+          {type === "success" ? (
+            <Check size={14} />
+          ) : (
+            <X size={14} />
+          )}
+        </div>
+
+        <p className="text-sm font-medium">{message}</p>
+      </div>
+
+      <button
+        type="button"
+        onClick={onClose}
+        className="cursor-pointer rounded-md p-1 opacity-60 transition hover:bg-black/5 hover:opacity-100"
+      >
+        <X size={16} />
+      </button>
+    </div>
+  );
+};
+
+/* -------------------------------------------------------------------------- */
+/* Empty State                                                                */
+/* -------------------------------------------------------------------------- */
+
+const EmptyState = ({
+  search,
+  onCreate,
+}: {
+  search: string;
+  onCreate: () => void;
+}) => {
+  return (
+    <div className="flex flex-col items-center justify-center px-6 py-16 text-center">
+      <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-red-50 text-red-600">
+        <Gamepad2 size={30} />
+      </div>
+
+      <h3 className="mt-5 text-base font-semibold text-slate-900">
+        {search ? "No games found" : "No games available"}
+      </h3>
+
+      <p className="mt-2 max-w-sm text-sm leading-6 text-slate-500">
+        {search
+          ? "Try changing your search keyword."
+          : "Create your first game to start managing the gaming centre."}
+      </p>
+
+      {!search && (
+        <button
+          type="button"
+          onClick={onCreate}
+          className="mt-5 inline-flex cursor-pointer items-center gap-2 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-red-700"
+        >
+          <Plus size={17} />
+          Add Game
+        </button>
+      )}
+    </div>
+  );
+};
+
+/* -------------------------------------------------------------------------- */
+/* Game Modal                                                                 */
+/* -------------------------------------------------------------------------- */
+
 const GameModal = ({
-  open,
   mode,
   form,
-  setForm,
-  selectedImage,
+  imageFile,
   imagePreview,
-  isDragging,
-  formErrors,
-  isSubmitting,
+  dragging,
+  submitting,
   onClose,
   onSubmit,
+  onChange,
   onImageChange,
-  onDragEnter,
-  onDragLeave,
-  onDragOver,
   onDrop,
-  onRemoveImage,
+  onDragOver,
+  onDragLeave,
 }: {
-  open: boolean;
-  mode: "create" | "edit" | "view";
+  mode: ModalMode;
   form: GameForm;
-  setForm: React.Dispatch<React.SetStateAction<GameForm>>;
-  selectedImage: File | null;
-  imagePreview: string;
-  isDragging: boolean;
-  formErrors: Record<string, string>;
-  isSubmitting: boolean;
+  imageFile: File | null;
+  imagePreview: string | null;
+  dragging: boolean;
+  submitting: boolean;
   onClose: () => void;
-  onSubmit: (e: FormEvent) => void;
-  onImageChange: (e: ChangeEvent<HTMLInputElement>) => void;
-  onDragEnter: (e: DragEvent<HTMLDivElement>) => void;
-  onDragLeave: (e: DragEvent<HTMLDivElement>) => void;
-  onDragOver: (e: DragEvent<HTMLDivElement>) => void;
+  onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
+  onChange: (
+    e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => void;
+  onImageChange: (file: File | null) => void;
   onDrop: (e: DragEvent<HTMLDivElement>) => void;
-  onRemoveImage: () => void;
+  onDragOver: (e: DragEvent<HTMLDivElement>) => void;
+  onDragLeave: () => void;
 }) => {
-  if (!open) return null;
-
-  const isView = mode === "view";
-  const isEdit = mode === "edit";
-
-  const title = isView
-    ? "Game Details"
-    : isEdit
-      ? "Edit Game"
-      : "Add Game";
-
-  const subtitle = isView
-    ? "View the selected gaming centre game."
-    : isEdit
-      ? "Update game details and availability."
-      : "Add a new game to your gaming centre.";
-
   return createPortal(
-    <div className="fixed inset-0 z-[9990] flex items-center justify-center overflow-y-auto bg-slate-950/50 p-3 backdrop-blur-sm sm:p-5">
-      <div className="relative my-auto flex max-h-[95vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
+    <div className="fixed inset-0 z-[99990] flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm">
+      <div
+        className="flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
-        <div className="flex shrink-0 items-center justify-between border-b border-slate-200 px-5 py-4 sm:px-6">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-50 text-red-700">
-              <Gamepad2 size={20} />
-            </div>
+        <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+          <div>
+            <h2 className="text-lg font-bold text-slate-900">
+              {mode === "create" ? "Add Game" : "Update Game"}
+            </h2>
 
-            <div>
-              <h2 className="text-base font-bold text-slate-900 sm:text-lg">
-                {title}
-              </h2>
-
-              <p className="mt-0.5 text-xs text-slate-500 sm:text-sm">
-                {subtitle}
-              </p>
-            </div>
+            <p className="mt-0.5 text-sm text-slate-500">
+              {mode === "create"
+                ? "Add a new game to the gaming centre."
+                : "Update the selected game details."}
+            </p>
           </div>
 
           <button
             type="button"
             onClick={onClose}
-            className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+            disabled={submitting}
+            className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 disabled:cursor-not-allowed"
           >
             <X size={19} />
           </button>
         </div>
 
-        {/* Content */}
+        {/* Body */}
         <form
           onSubmit={onSubmit}
-          className="min-h-0 flex-1 overflow-y-auto"
+          className="overflow-y-auto"
         >
-          <div className="grid grid-cols-1 gap-6 p-5 sm:p-6 lg:grid-cols-[260px_1fr]">
+          <div className="space-y-5 p-6">
+            {/* Name */}
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-slate-700">
+                Game Name
+                <span className="ml-1 text-red-500">*</span>
+              </label>
+
+              <input
+                type="text"
+                name="name"
+                value={form.name}
+                onChange={onChange}
+                placeholder="Enter game name"
+                required
+                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-red-500 focus:ring-4 focus:ring-red-500/10"
+              />
+            </div>
+
+            {/* Description */}
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-slate-700">
+                Description
+              </label>
+
+              <textarea
+                name="description"
+                value={form.description}
+                onChange={onChange}
+                rows={4}
+                placeholder="Enter game description"
+                className="w-full resize-none rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-red-500 focus:ring-4 focus:ring-red-500/10"
+              />
+            </div>
+
             {/* Image */}
             <div>
-              <label className="mb-2 block text-sm font-semibold text-slate-800">
+              <label className="mb-2 block text-sm font-semibold text-slate-700">
                 Game Image
               </label>
 
-              {isView ? (
-                <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
-                  {imagePreview ? (
+              <div
+                onDrop={onDrop}
+                onDragOver={onDragOver}
+                onDragLeave={onDragLeave}
+                className={`relative overflow-hidden rounded-2xl border-2 border-dashed transition ${
+                  dragging
+                    ? "border-red-500 bg-red-50"
+                    : "border-slate-200 bg-slate-50/70 hover:border-red-300 hover:bg-red-50/30"
+                }`}
+              >
+                {imagePreview ? (
+                  <div className="relative">
                     <img
                       src={imagePreview}
-                      alt={form.name}
-                      className="aspect-square w-full object-cover"
+                      alt="Game preview"
+                      className="h-56 w-full object-cover"
                     />
-                  ) : (
-                    <div className="flex aspect-square flex-col items-center justify-center text-slate-400">
-                      <ImageIcon size={32} />
-                      <span className="mt-2 text-xs">
-                        No image available
+
+                    <div className="absolute inset-x-0 bottom-0 flex items-center justify-between bg-gradient-to-t from-black/70 to-transparent p-4 pt-12">
+                      <span className="truncate pr-3 text-xs font-medium text-white">
+                        {imageFile?.name ?? "Current image"}
                       </span>
+
+                      <label className="shrink-0 cursor-pointer rounded-lg bg-white/95 px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-white">
+                        Change
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) =>
+                            onImageChange(
+                              e.target.files?.[0] ?? null
+                            )
+                          }
+                        />
+                      </label>
                     </div>
-                  )}
-                </div>
-              ) : (
-                <div
-                  onDragEnter={onDragEnter}
-                  onDragLeave={onDragLeave}
-                  onDragOver={onDragOver}
-                  onDrop={onDrop}
-                  className={`relative overflow-hidden rounded-2xl border-2 border-dashed transition-all ${
-                    isDragging
-                      ? "border-red-500 bg-red-50"
-                      : formErrors.image
-                        ? "border-red-300 bg-red-50/30"
-                        : "border-slate-200 bg-slate-50/70 hover:border-red-300 hover:bg-red-50/30"
-                  }`}
-                >
-                  {imagePreview ? (
-                    <div className="group relative">
-                      <img
-                        src={imagePreview}
-                        alt="Game preview"
-                        className="aspect-square w-full object-cover"
-                      />
-
-                      <div className="absolute inset-0 flex items-end justify-between bg-gradient-to-t from-slate-950/70 via-transparent to-transparent p-3 opacity-0 transition group-hover:opacity-100">
-                        <span className="truncate pr-2 text-xs font-medium text-white">
-                          {selectedImage?.name || "Current image"}
-                        </span>
-
-                        <button
-                          type="button"
-                          onClick={onRemoveImage}
-                          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/90 text-red-600 shadow-sm transition hover:bg-white"
-                        >
-                          <X size={15} />
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <label className="flex aspect-square cursor-pointer flex-col items-center justify-center p-5 text-center">
-                      <input
-                        type="file"
-                        accept={ALLOWED_IMAGE_TYPES.join(",")}
-                        onChange={onImageChange}
-                        className="hidden"
-                      />
-
-                      <div
-                        className={`flex h-12 w-12 items-center justify-center rounded-xl ${
-                          isDragging
-                            ? "bg-red-100 text-red-700"
-                            : "bg-white text-slate-500 shadow-sm"
-                        }`}
-                      >
+                  </div>
+                ) : (
+                  <label className="flex cursor-pointer flex-col items-center justify-center px-6 py-10 text-center">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-red-50 text-red-600">
+                      {dragging ? (
                         <Upload size={22} />
-                      </div>
+                      ) : (
+                        <ImagePlus size={22} />
+                      )}
+                    </div>
 
-                      <p className="mt-4 text-sm font-semibold text-slate-700">
-                        Drop image here
-                      </p>
+                    <p className="mt-3 text-sm font-semibold text-slate-700">
+                      {dragging
+                        ? "Drop image here"
+                        : "Upload game image"}
+                    </p>
 
-                      <p className="mt-1 text-xs leading-5 text-slate-400">
-                        or click to browse
-                      </p>
+                    <p className="mt-1 text-xs text-slate-400">
+                      Drag & drop or click to browse
+                    </p>
 
-                      <p className="mt-3 text-[11px] text-slate-400">
-                        PNG, JPG or WEBP · Max 5MB
-                      </p>
-                    </label>
-                  )}
-                </div>
-              )}
-
-              {formErrors.image && (
-                <p className="mt-2 flex items-center gap-1.5 text-xs font-medium text-red-600">
-                  <AlertCircle size={13} />
-                  {formErrors.image}
-                </p>
-              )}
-            </div>
-
-            {/* Form */}
-            <div className="space-y-5">
-              <div>
-                <label className="mb-2 block text-sm font-semibold text-slate-800">
-                  Game Name
-                  {!isView && (
-                    <span className="ml-1 text-red-500">*</span>
-                  )}
-                </label>
-
-                <input
-                  type="text"
-                  value={form.name}
-                  disabled={isView}
-                  onChange={(e) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      name: e.target.value,
-                    }))
-                  }
-                  placeholder="Enter game name"
-                  className={`h-11 w-full rounded-xl border bg-white px-3.5 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 ${
-                    formErrors.name
-                      ? "border-red-300 focus:border-red-500 focus:ring-4 focus:ring-red-100"
-                      : "border-slate-200 focus:border-red-500 focus:ring-4 focus:ring-red-100"
-                  } ${
-                    isView
-                      ? "cursor-default bg-slate-50 text-slate-600"
-                      : ""
-                  }`}
-                />
-
-                {formErrors.name && (
-                  <p className="mt-1.5 text-xs font-medium text-red-600">
-                    {formErrors.name}
-                  </p>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) =>
+                        onImageChange(
+                          e.target.files?.[0] ?? null
+                        )
+                      }
+                    />
+                  </label>
                 )}
               </div>
+            </div>
 
-              <div>
-                <label className="mb-2 block text-sm font-semibold text-slate-800">
-                  Description
-                </label>
+            {/* Status */}
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+              <label className="flex cursor-pointer items-center justify-between gap-4">
+                <div>
+                  <p className="text-sm font-semibold text-slate-800">
+                    Game Status
+                  </p>
 
-                <textarea
-                  value={form.description}
-                  disabled={isView}
-                  onChange={(e) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      description: e.target.value,
-                    }))
-                  }
-                  placeholder="Describe the game..."
-                  rows={5}
-                  className={`w-full resize-none rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-sm leading-6 text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-red-500 focus:ring-4 focus:ring-red-100 ${
-                    isView
-                      ? "cursor-default bg-slate-50 text-slate-600"
-                      : ""
-                  }`}
-                />
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-semibold text-slate-800">
-                  Availability
-                </label>
+                  <p className="mt-1 text-xs text-slate-500">
+                    Enable this game when it is available for
+                    customers.
+                  </p>
+                </div>
 
                 <button
                   type="button"
-                  disabled={isView}
+                  role="switch"
+                  aria-checked={form.isActive}
                   onClick={() =>
-                    setForm((prev) => ({
-                      ...prev,
-                      isActive: !prev.isActive,
-                    }))
+                    onChange({
+                      target: {
+                        name: "isActive",
+                        value: !form.isActive,
+                      },
+                    } as any)
                   }
-                  className={`flex w-full cursor-pointer items-center justify-between rounded-xl border px-4 py-3 text-left transition ${
+                  className={`relative h-6 w-11 shrink-0 cursor-pointer rounded-full transition ${
                     form.isActive
-                      ? "border-emerald-200 bg-emerald-50/60"
-                      : "border-slate-200 bg-slate-50"
-                  } ${
-                    isView
-                      ? "cursor-default"
-                      : "hover:border-slate-300"
+                      ? "bg-red-600"
+                      : "bg-slate-300"
                   }`}
                 >
-                  <div className="flex items-center gap-3">
-                    <div
-                      className={`flex h-9 w-9 items-center justify-center rounded-lg ${
-                        form.isActive
-                          ? "bg-emerald-100 text-emerald-600"
-                          : "bg-slate-200 text-slate-500"
-                      }`}
-                    >
-                      <CircleDot size={18} />
-                    </div>
-
-                    <div>
-                      <p className="text-sm font-semibold text-slate-800">
-                        {form.isActive ? "Active" : "Inactive"}
-                      </p>
-
-                      <p className="text-xs text-slate-500">
-                        {form.isActive
-                          ? "This game is available for bookings."
-                          : "This game is currently unavailable."}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div
-                    className={`relative h-6 w-11 rounded-full transition ${
+                  <span
+                    className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow-sm transition ${
                       form.isActive
-                        ? "bg-emerald-500"
-                        : "bg-slate-300"
+                        ? "left-6"
+                        : "left-1"
                     }`}
-                  >
-                    <span
-                      className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow-sm transition ${
-                        form.isActive ? "left-6" : "left-1"
-                      }`}
-                    />
-                  </div>
+                  />
                 </button>
-              </div>
-
-              {isView && (
-                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
-                        Status
-                      </p>
-
-                      <div className="mt-2">
-                        <StatusBadge isActive={form.isActive} />
-                      </div>
-                    </div>
-
-                    <div className="text-right">
-                      <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
-                        Game ID
-                      </p>
-
-                      <p className="mt-2 text-sm font-bold text-slate-700">
-                        #{form.id}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
+              </label>
             </div>
           </div>
 
           {/* Footer */}
-          <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-slate-200 bg-slate-50/60 px-5 py-4 sm:flex-row sm:items-center sm:justify-end sm:px-6">
+          <div className="flex flex-col-reverse gap-3 border-t border-slate-200 bg-slate-50/70 px-6 py-4 sm:flex-row sm:justify-end">
             <button
               type="button"
               onClick={onClose}
-              className="h-11 rounded-xl border cursor-pointer border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+              disabled={submitting}
+              className="w-full cursor-pointer rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed sm:w-auto"
             >
-              {isView ? "Close" : "Cancel"}
+              Cancel
             </button>
 
-            {!isView && (
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="inline-flex h-11 items-center cursor-pointer justify-center gap-2 rounded-xl bg-red-700 px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-red-800 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {isSubmitting ? (
-                  <>
-                    <Loader2 size={17} className="animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  <>
-                    <Check size={17} />
-                    {isEdit ? "Update Game" : "Create Game"}
-                  </>
-                )}
-              </button>
-            )}
+            <button
+              type="submit"
+              disabled={submitting}
+              className="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-red-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+            >
+              {submitting && (
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+              )}
+
+              {mode === "create"
+                ? "Create Game"
+                : "Update Game"}
+            </button>
           </div>
         </form>
       </div>
@@ -709,24 +539,85 @@ const GameModal = ({
   );
 };
 
+/* -------------------------------------------------------------------------- */
+/* Delete Confirmation Modal                                                  */
+/* -------------------------------------------------------------------------- */
+
+const DeleteConfirmModal = ({
+  game,
+  onClose,
+}: {
+  game: Game;
+  onClose: () => void;
+}) => {
+  return createPortal(
+    <div className="fixed inset-0 z-[99991] flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm">
+      <div className="w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
+        <div className="p-6">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-red-50 text-red-600">
+            <Trash2 size={22} />
+          </div>
+
+          <h3 className="mt-5 text-lg font-bold text-slate-900">
+            Delete Game?
+          </h3>
+
+          <p className="mt-2 text-sm leading-6 text-slate-500">
+            Are you sure you want to delete{" "}
+            <span className="font-semibold text-slate-700">
+              {game.name}
+            </span>
+            ?
+          </p>
+
+          <p className="mt-2 text-xs text-slate-400">
+            The delete API is not included in the current game
+            service, so no backend deletion will be performed yet.
+          </p>
+        </div>
+
+        <div className="flex flex-col-reverse gap-3 border-t border-slate-200 bg-slate-50/70 px-6 py-4 sm:flex-row sm:justify-end">
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-full cursor-pointer rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 sm:w-auto"
+          >
+            Cancel
+          </button>
+
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-full cursor-pointer rounded-xl bg-red-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-red-700 sm:w-auto"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+};
+
+/* -------------------------------------------------------------------------- */
+/* Page                                                                        */
+/* -------------------------------------------------------------------------- */
+
 const GamePage = () => {
   const [games, setGames] = useState<Game[]>([]);
-  const [searchTerm, setSearchTerm] = useState("");
 
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+
+  const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
 
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalMode, setModalMode] =
+    useState<ModalMode>("create");
 
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalMode, setModalMode] = useState<
-    "create" | "edit" | "view"
-  >("create");
-
-  const [selectedGame, setSelectedGame] = useState<Game | null>(
-    null
-  );
+  const [selectedGame, setSelectedGame] =
+    useState<Game | null>(null);
 
   const [form, setForm] = useState<GameForm>({
     name: "",
@@ -734,41 +625,56 @@ const GamePage = () => {
     isActive: true,
   });
 
-  const [formErrors, setFormErrors] = useState<
-    Record<string, string>
-  >({});
+  const [imageFile, setImageFile] = useState<File | null>(
+    null
+  );
+  const [imagePreview, setImagePreview] = useState<
+    string | null
+  >(null);
 
-  const [selectedImage, setSelectedImage] = useState<File | null>(
+  const [dragging, setDragging] = useState(false);
+
+  const [alert, setAlert] = useState<{
+    type: "success" | "error";
+    message: string;
+  } | null>(null);
+
+  /* ------------------------------- Action Menu ---------------------------- */
+
+  const [openMenuId, setOpenMenuId] = useState<number | null>(
     null
   );
 
-  const [imagePreview, setImagePreview] = useState("");
+  const [menuPosition, setMenuPosition] = useState<{
+    top: number;
+    left: number;
+  } | null>(null);
 
-  const [isDragging, setIsDragging] = useState(false);
+  const [deleteGame, setDeleteGame] = useState<Game | null>(
+    null
+  );
 
-  const [openMenuId, setOpenMenuId] = useState<number | null>(null);
-
-  const [pageAlert, setPageAlert] = useState<PageAlert>(null);
-
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  /* ------------------------------------------------------------------------ */
+  /* Load Games                                                               */
+  /* ------------------------------------------------------------------------ */
 
   const loadGames = async () => {
-    setIsLoading(true);
-
     try {
-      const response = await getGames();
-      const normalizedGames = extractGames(response);
+      setLoading(true);
 
-      setGames(normalizedGames);
+      const response = await getGames();
+      const normalized = extractGames(response);
+
+      setGames(normalized);
     } catch (error) {
       console.error("Failed to load games:", error);
 
-      setPageAlert({
+      setAlert({
         type: "error",
-        message: "Unable to load games. Please try again.",
+        message: "Failed to load games.",
       });
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
@@ -776,53 +682,72 @@ const GamePage = () => {
     loadGames();
   }, []);
 
-  useEffect(() => {
-    if (!pageAlert) return;
-
-    const timeout = window.setTimeout(() => {
-      setPageAlert(null);
-    }, 2500);
-
-    return () => window.clearTimeout(timeout);
-  }, [pageAlert]);
+  /* ------------------------------------------------------------------------ */
+  /* Close Action Menu                                                        */
+  /* ------------------------------------------------------------------------ */
 
   useEffect(() => {
-    setCurrentPage(1);
-  }, [searchTerm, itemsPerPage]);
+    const handleResize = () => {
+      setOpenMenuId(null);
+      setMenuPosition(null);
+    };
 
-  useEffect(() => {
-    const closeMenu = () => setOpenMenuId(null);
+    const handleScroll = () => {
+      if (openMenuId !== null) {
+        setOpenMenuId(null);
+        setMenuPosition(null);
+      }
+    };
 
-    document.addEventListener("click", closeMenu);
+    window.addEventListener("resize", handleResize);
+    window.addEventListener("scroll", handleScroll, true);
 
     return () => {
-      document.removeEventListener("click", closeMenu);
+      window.removeEventListener("resize", handleResize);
+      window.removeEventListener("scroll", handleScroll, true);
     };
-  }, []);
+  }, [openMenuId]);
+
+  /* ------------------------------------------------------------------------ */
+  /* Search                                                                   */
+  /* ------------------------------------------------------------------------ */
 
   const filteredGames = useMemo(() => {
-    const search = searchTerm.trim().toLowerCase();
+    const keyword = search.trim().toLowerCase();
 
-    if (!search) return games;
+    if (!keyword) return games;
 
     return games.filter((game) => {
       return (
-        game.name.toLowerCase().includes(search) ||
-        game.description.toLowerCase().includes(search)
+        game.name.toLowerCase().includes(keyword) ||
+        game.description.toLowerCase().includes(keyword)
       );
     });
-  }, [games, searchTerm]);
+  }, [games, search]);
+
+  /* ------------------------------------------------------------------------ */
+  /* Pagination                                                                */
+  /* ------------------------------------------------------------------------ */
 
   const totalPages = Math.max(
     1,
-    Math.ceil(filteredGames.length / itemsPerPage)
+    Math.ceil(filteredGames.length / PAGE_SIZE)
+  );
+
+  const safeCurrentPage = Math.min(
+    currentPage,
+    totalPages
   );
 
   const paginatedGames = useMemo(() => {
-    const start = (currentPage - 1) * itemsPerPage;
+    const start = (safeCurrentPage - 1) * PAGE_SIZE;
 
-    return filteredGames.slice(start, start + itemsPerPage);
-  }, [filteredGames, currentPage, itemsPerPage]);
+    return filteredGames.slice(start, start + PAGE_SIZE);
+  }, [filteredGames, safeCurrentPage]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search]);
 
   useEffect(() => {
     if (currentPage > totalPages) {
@@ -830,209 +755,159 @@ const GamePage = () => {
     }
   }, [currentPage, totalPages]);
 
+  /* ------------------------------------------------------------------------ */
+  /* Statistics                                                               */
+  /* ------------------------------------------------------------------------ */
+
   const totalGames = games.length;
 
-  const activeGames = games.filter((game) => game.isActive).length;
+  const activeGames = games.filter(
+    (game) => game.isActive
+  ).length;
 
   const inactiveGames = games.filter(
     (game) => !game.isActive
   ).length;
 
-  const openCreateModal = () => {
-    setModalMode("create");
-    setSelectedGame(null);
+  /* ------------------------------------------------------------------------ */
+  /* Form                                                                     */
+  /* ------------------------------------------------------------------------ */
 
+  const resetForm = () => {
     setForm({
       name: "",
       description: "",
       isActive: true,
     });
 
-    setFormErrors({});
-    setSelectedImage(null);
-    setImagePreview("");
+    setImageFile(null);
+    setImagePreview(null);
+    setSelectedGame(null);
+  };
 
-    setIsModalOpen(true);
+  const openCreateModal = () => {
+    resetForm();
+
+    setModalMode("create");
+    setModalOpen(true);
   };
 
   const openEditModal = (game: Game) => {
+    setSelectedGame(game);
+
+    setForm({
+      id: game.id,
+      name: game.name,
+      description: game.description,
+      isActive: game.isActive,
+    });
+
+    setImageFile(null);
+    setImagePreview(getImageSrc(game.image));
+
     setModalMode("edit");
-    setSelectedGame(game);
-
-    setForm({
-      id: game.id,
-      name: game.name,
-      description: game.description,
-      isActive: game.isActive,
-    });
-
-    setFormErrors({});
-    setSelectedImage(null);
-    setImagePreview(getImageSource(game.image));
-
-    setIsModalOpen(true);
-    setOpenMenuId(null);
-  };
-
-  const openViewModal = (game: Game) => {
-    setModalMode("view");
-    setSelectedGame(game);
-
-    setForm({
-      id: game.id,
-      name: game.name,
-      description: game.description,
-      isActive: game.isActive,
-    });
-
-    setFormErrors({});
-    setSelectedImage(null);
-    setImagePreview(getImageSource(game.image));
-
-    setIsModalOpen(true);
-    setOpenMenuId(null);
+    setModalOpen(true);
   };
 
   const closeModal = () => {
-    if (isSubmitting) return;
+    if (submitting) return;
 
-    setIsModalOpen(false);
-    setSelectedGame(null);
-    setSelectedImage(null);
-    setImagePreview("");
-    setFormErrors({});
+    setModalOpen(false);
+    resetForm();
   };
 
-  const validateForm = () => {
-    const errors: Record<string, string> = {};
-
-    if (!form.name.trim()) {
-      errors.name = "Game name is required.";
-    } else if (form.name.trim().length < 2) {
-      errors.name = "Game name must contain at least 2 characters.";
-    }
-
-    if (
-      modalMode === "create" &&
-      !selectedImage &&
-      !imagePreview
-    ) {
-      errors.image = "Please upload a game image.";
-    }
-
-    setFormErrors(errors);
-
-    return Object.keys(errors).length === 0;
-  };
-
-  const processImageFile = (file: File) => {
-    if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
-      setFormErrors({
-        image: "Only JPG, PNG and WEBP images are allowed.",
-      });
-
-      return;
-    }
-
-    if (file.size > MAX_IMAGE_SIZE) {
-      setFormErrors({
-        image: "Image size must be less than 5MB.",
-      });
-
-      return;
-    }
-
-    setFormErrors((prev) => {
-      const next = { ...prev };
-      delete next.image;
-      return next;
-    });
-
-    setSelectedImage(file);
-
-    const objectUrl = URL.createObjectURL(file);
-
-    setImagePreview((oldPreview) => {
-      if (oldPreview.startsWith("blob:")) {
-        URL.revokeObjectURL(oldPreview);
-      }
-
-      return objectUrl;
-    });
-  };
-
-  const handleImageChange = (
-    e: ChangeEvent<HTMLInputElement>
+  const handleFormChange = (
+    e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
-    const file = e.target.files?.[0];
+    const { name, value } = e.target;
 
-    if (file) {
-      processImageFile(file);
+    if (name === "isActive") {
+      setForm((prev) => ({
+        ...prev,
+        isActive:
+          typeof value === "boolean"
+            ? value
+            : value === "true",
+      }));
+
+      return;
     }
 
-    e.target.value = "";
+    setForm((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
   };
 
-  const handleDragEnter = (e: DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
+  /* ------------------------------------------------------------------------ */
+  /* Image Upload                                                             */
+  /* ------------------------------------------------------------------------ */
 
-    setIsDragging(true);
-  };
+  const handleImageChange = (file: File | null) => {
+    if (!file) return;
 
-  const handleDragLeave = (e: DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
+    if (!file.type.startsWith("image/")) {
+      setAlert({
+        type: "error",
+        message: "Please select a valid image file.",
+      });
 
-    setIsDragging(false);
-  };
+      return;
+    }
 
-  const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
+    setImageFile(file);
 
-    e.dataTransfer.dropEffect = "copy";
+    const reader = new FileReader();
 
-    setIsDragging(true);
+    reader.onload = () => {
+      setImagePreview(reader.result as string);
+    };
+
+    reader.readAsDataURL(file);
   };
 
   const handleDrop = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();
-    e.stopPropagation();
 
-    setIsDragging(false);
+    setDragging(false);
 
     const file = e.dataTransfer.files?.[0];
 
     if (file) {
-      processImageFile(file);
+      handleImageChange(file);
     }
   };
 
-  const removeImage = () => {
-    setSelectedImage(null);
-
-    if (imagePreview.startsWith("blob:")) {
-      URL.revokeObjectURL(imagePreview);
-    }
-
-    setImagePreview("");
-
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
+  const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setDragging(true);
   };
 
-  const handleSubmit = async (e: FormEvent) => {
+  const handleDragLeave = () => {
+    setDragging(false);
+  };
+
+  /* ------------------------------------------------------------------------ */
+  /* Submit                                                                   */
+  /* ------------------------------------------------------------------------ */
+
+  const handleSubmit = async (
+    e: React.FormEvent<HTMLFormElement>
+  ) => {
     e.preventDefault();
 
-    if (!validateForm()) {
+    if (!form.name.trim()) {
+      setAlert({
+        type: "error",
+        message: "Game name is required.",
+      });
+
       return;
     }
 
-    setIsSubmitting(true);
-
     try {
+      setSubmitting(true);
+
       const formData = new FormData();
 
       if (modalMode === "edit" && form.id) {
@@ -1040,216 +915,358 @@ const GamePage = () => {
       }
 
       formData.append("Name", form.name.trim());
-      formData.append("Description", form.description.trim());
-      formData.append("IsActive", String(form.isActive));
+      formData.append(
+        "Description",
+        form.description.trim()
+      );
+      formData.append(
+        "IsActive",
+        String(form.isActive)
+      );
 
-      if (selectedImage) {
-        formData.append("Image", selectedImage);
+      if (imageFile) {
+        formData.append("Image", imageFile);
       }
 
       if (modalMode === "create") {
         await createGame(formData);
 
-        setPageAlert({
+        setAlert({
           type: "success",
           message: "Game created successfully.",
         });
       } else {
         await updateGame(formData);
 
-        setPageAlert({
+        setAlert({
           type: "success",
           message: "Game updated successfully.",
         });
       }
 
-      closeModal();
+      setModalOpen(false);
+      resetForm();
 
       await loadGames();
     } catch (error) {
-      console.error("Game save failed:", error);
+      console.error("Failed to save game:", error);
 
-      setPageAlert({
+      setAlert({
         type: "error",
         message:
-          "Unable to save the game. Please check the details and try again.",
+          modalMode === "create"
+            ? "Failed to create game."
+            : "Failed to update game.",
       });
     } finally {
-      setIsSubmitting(false);
+      setSubmitting(false);
     }
   };
 
-  const pageStart =
-    filteredGames.length === 0
-      ? 0
-      : (currentPage - 1) * itemsPerPage + 1;
+  /* ------------------------------------------------------------------------ */
+  /* Action Menu                                                              */
+  /* ------------------------------------------------------------------------ */
 
-  const pageEnd = Math.min(
-    currentPage * itemsPerPage,
-    filteredGames.length
-  );
+  const handleActionMenuClick = (
+    e: React.MouseEvent<HTMLButtonElement>,
+    gameId: number
+  ) => {
+    e.preventDefault();
+    e.stopPropagation();
 
-  return (
-    <main className="min-h-screen bg-slate-50/60">
-      <AlertMessage
-        alert={pageAlert}
-        onClose={() => setPageAlert(null)}
-      />
+    if (openMenuId === gameId) {
+      setOpenMenuId(null);
+      setMenuPosition(null);
+      return;
+    }
 
-      {isLoading && <LoadingOverlay />}
+    const rect =
+      e.currentTarget.getBoundingClientRect();
 
-      <GameModal
-        open={isModalOpen}
-        mode={modalMode}
-        form={form}
-        setForm={setForm}
-        selectedImage={selectedImage}
-        imagePreview={imagePreview}
-        isDragging={isDragging}
-        formErrors={formErrors}
-        isSubmitting={isSubmitting}
-        onClose={closeModal}
-        onSubmit={handleSubmit}
-        onImageChange={handleImageChange}
-        onDragEnter={handleDragEnter}
-        onDragLeave={handleDragLeave}
-        onDragOver={handleDragOver}
-        onDrop={handleDrop}
-        onRemoveImage={removeImage}
-      />
+    const menuWidth = 176;
+    const menuHeight = 104;
+    const spacing = 8;
+    const viewportPadding = 12;
 
-      <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-        {/* Header */}
-        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-red-700 text-white shadow-sm shadow-red-700/20">
-              <Gamepad2 size={22} />
-            </div>
+    let left = rect.right - menuWidth;
+    let top = rect.bottom + spacing;
 
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-                  Games
-                </h1>
+    if (
+      left + menuWidth >
+      window.innerWidth - viewportPadding
+    ) {
+      left =
+        window.innerWidth -
+        menuWidth -
+        viewportPadding;
+    }
 
-                <span className="hidden rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-red-700 sm:inline-flex">
-                  Gaming Centre
-                </span>
-              </div>
+    if (left < viewportPadding) {
+      left = viewportPadding;
+    }
 
-              <p className="mt-0.5 text-sm text-slate-500">
-                Manage gaming experiences, availability and game
-                information.
-              </p>
-            </div>
-          </div>
+    if (
+      top + menuHeight >
+      window.innerHeight - viewportPadding
+    ) {
+      top = rect.top - menuHeight - spacing;
+    }
 
-          <div className="flex w-full gap-2 sm:w-auto">
+    if (top < viewportPadding) {
+      top = viewportPadding;
+    }
+
+    setMenuPosition({
+      top,
+      left,
+    });
+
+    setOpenMenuId(gameId);
+  };
+
+  /* ------------------------------------------------------------------------ */
+  /* Portal Action Menu                                                       */
+  /* ------------------------------------------------------------------------ */
+
+  const actionMenu =
+    openMenuId !== null && menuPosition
+      ? createPortal(
+          <div
+            className="fixed z-[999999] w-44 overflow-hidden rounded-xl border border-slate-200 bg-white p-1.5 shadow-2xl"
+            style={{
+              top: menuPosition.top,
+              left: menuPosition.left,
+            }}
+            onMouseDown={(e) => {
+              e.stopPropagation();
+            }}
+            onClick={(e) => {
+              e.stopPropagation();
+            }}
+          >
+            {/* Update */}
             <button
               type="button"
-              onClick={() => window.location.reload()}
-              disabled={isLoading}
-              className="inline-flex cursor-pointer h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-red-200 hover:bg-red-50 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-60 sm:flex-none"
+              onClick={() => {
+                const game = games.find(
+                  (item) => item.id === openMenuId
+                );
+
+                setOpenMenuId(null);
+                setMenuPosition(null);
+
+                if (game) {
+                  openEditModal(game);
+                }
+              }}
+              className="flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-slate-700 transition hover:bg-red-50 hover:text-red-700"
             >
-              <RefreshCw
-                size={17}
-                className={isLoading ? "animate-spin" : ""}
-              />
-              <span>Refresh</span>
+              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-50 text-slate-500">
+                <Edit3 size={15} />
+              </span>
+
+              <span>Update</span>
             </button>
+
+            {/* Delete */}
+            <button
+              type="button"
+              onClick={() => {
+                const game = games.find(
+                  (item) => item.id === openMenuId
+                );
+
+                setOpenMenuId(null);
+                setMenuPosition(null);
+
+                if (game) {
+                  setDeleteGame(game);
+                }
+              }}
+              className="flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-red-600 transition hover:bg-red-50"
+            >
+              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-red-50 text-red-500">
+                <Trash2 size={15} />
+              </span>
+
+              <span>Delete</span>
+            </button>
+          </div>,
+          document.body
+        )
+      : null;
+
+  /* ------------------------------------------------------------------------ */
+  /* Render                                                                   */
+  /* ------------------------------------------------------------------------ */
+
+  return (
+    <>
+      {actionMenu}
+
+      {modalOpen && (
+        <GameModal
+          mode={modalMode}
+          form={form}
+          imageFile={imageFile}
+          imagePreview={imagePreview}
+          dragging={dragging}
+          submitting={submitting}
+          onClose={closeModal}
+          onSubmit={handleSubmit}
+          onChange={handleFormChange}
+          onImageChange={handleImageChange}
+          onDrop={handleDrop}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+        />
+      )}
+
+      {deleteGame && (
+        <DeleteConfirmModal
+          game={deleteGame}
+          onClose={() => setDeleteGame(null)}
+        />
+      )}
+
+      <main className="min-h-screen bg-slate-50 p-4 sm:p-6 lg:p-8">
+        <div className="mx-auto max-w-[1600px]">
+          {/* ---------------------------------------------------------------- */}
+          {/* Header                                                           */}
+          {/* ---------------------------------------------------------------- */}
+
+          <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <div className="flex items-center gap-3">
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-red-600 text-white shadow-sm">
+                  <Gamepad2 size={22} />
+                </div>
+
+                <div>
+                  <h1 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">
+                    Games
+                  </h1>
+
+                  <p className="mt-0.5 text-sm text-slate-500">
+                    Manage gaming centre games and availability.
+                  </p>
+                </div>
+              </div>
+            </div>
 
             <button
               type="button"
               onClick={openCreateModal}
-              className="inline-flex cursor-pointer h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-red-700 px-4 text-sm font-semibold text-white shadow-sm shadow-red-700/20 transition hover:bg-red-800 sm:flex-none"
+              className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-red-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-red-700 hover:shadow-md"
             >
               <Plus size={18} />
-              <span>Add Game</span>
+              Add Game
             </button>
           </div>
-        </div>
 
-        {/* Summary */}
-        <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <SummaryCard
-            title="Total Games"
-            value={totalGames}
-            description="Games configured in the system"
-            icon={<Gamepad2 size={20} />}
-            iconClassName="bg-red-50 text-red-700"
-          />
+          {/* ---------------------------------------------------------------- */}
+          {/* Alert                                                            */}
+          {/* ---------------------------------------------------------------- */}
 
-          <SummaryCard
-            title="Active Games"
-            value={activeGames}
-            description="Currently available games"
-            icon={<Zap size={20} />}
-            iconClassName="bg-emerald-50 text-emerald-600"
-          />
+          {alert && (
+            <AlertMessage
+              message={alert.message}
+              type={alert.type}
+              onClose={() => setAlert(null)}
+            />
+          )}
 
-          <SummaryCard
-            title="Inactive Games"
-            value={inactiveGames}
-            description="Currently unavailable games"
-            icon={<CircleDot size={20} />}
-            iconClassName="bg-slate-100 text-slate-500"
-          />
-        </div>
+          {/* ---------------------------------------------------------------- */}
+          {/* Summary                                                          */}
+          {/* ---------------------------------------------------------------- */}
 
-        {/* Main content */}
-        <section className="overflow-visible rounded-2xl border border-slate-200 bg-white shadow-sm">
-          {/* Toolbar */}
-          <div className="flex flex-col gap-3 border-b border-slate-200 p-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="relative w-full sm:max-w-md">
-              <Search
-                size={18}
-                className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
-              />
+          <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <SummaryCard
+              title="Total Games"
+              value={totalGames}
+              description="All registered games"
+              icon={<Gamepad2 size={21} />}
+            />
 
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search games..."
-                className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-10 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-red-500 focus:bg-white focus:ring-4 focus:ring-red-100"
-              />
+            <SummaryCard
+              title="Active Games"
+              value={activeGames}
+              description="Currently available"
+              icon={<Activity size={21} />}
+            />
 
-              {searchTerm && (
-                <button
-                  type="button"
-                  onClick={() => setSearchTerm("")}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-1 text-slate-400 transition hover:bg-slate-200 hover:text-slate-700"
-                >
-                  <X size={15} />
-                </button>
-              )}
-            </div>
-
-            <div className="flex items-center justify-between gap-3 sm:justify-end">
-              <p className="text-xs font-medium text-slate-400">
-                {filteredGames.length}{" "}
-                {filteredGames.length === 1 ? "game" : "games"}
-              </p>
-
-              {searchTerm && (
-                <span className="rounded-lg bg-red-50 px-2.5 py-1.5 text-xs font-semibold text-red-700">
-                  Searching
-                </span>
-              )}
-            </div>
+            <SummaryCard
+              title="Inactive Games"
+              value={inactiveGames}
+              description="Currently unavailable"
+              icon={<X size={21} />}
+            />
           </div>
 
-          {/* Empty */}
-          {!isLoading && filteredGames.length === 0 ? (
-            <EmptyState
-              searchTerm={searchTerm}
-              onClear={() => setSearchTerm("")}
-              onAdd={openCreateModal}
-            />
-          ) : (
-            <>
-              {/* Desktop table */}
-              <div className="hidden overflow-x-auto md:block">
+          {/* ---------------------------------------------------------------- */}
+          {/* Main Card                                                        */}
+          {/* ---------------------------------------------------------------- */}
+
+          <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+            {loading && <LoadingOverlay />}
+
+            {/* Toolbar */}
+            <div className="border-b border-slate-200 p-4 sm:p-5">
+              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <h2 className="text-base font-bold text-slate-900">
+                    Game List
+                  </h2>
+
+                  <p className="mt-1 text-xs text-slate-500">
+                    {filteredGames.length}{" "}
+                    {filteredGames.length === 1
+                      ? "game"
+                      : "games"}{" "}
+                    found
+                  </p>
+                </div>
+
+                <div className="relative w-full md:max-w-sm">
+                  <Search
+                    size={17}
+                    className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
+                  />
+
+                  <input
+                    type="text"
+                    value={search}
+                    onChange={(e) =>
+                      setSearch(e.target.value)
+                    }
+                    placeholder="Search games..."
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-red-500 focus:bg-white focus:ring-4 focus:ring-red-500/10"
+                  />
+
+                  {search && (
+                    <button
+                      type="button"
+                      onClick={() => setSearch("")}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer text-slate-400 transition hover:text-slate-700"
+                    >
+                      <X size={16} />
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* ---------------------------------------------------------------- */}
+            {/* Desktop Table                                                    */}
+            {/* ---------------------------------------------------------------- */}
+
+            <div className="hidden overflow-x-auto md:block">
+              {paginatedGames.length === 0 ? (
+                <EmptyState
+                  search={search}
+                  onCreate={openCreateModal}
+                />
+              ) : (
                 <table className="w-full min-w-[760px]">
                   <thead>
                     <tr className="border-b border-slate-200 bg-slate-50/70">
@@ -1265,263 +1282,247 @@ const GamePage = () => {
                         Status
                       </th>
 
-                      <th className="w-16 px-5 py-3.5 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      <th className="w-20 px-5 py-3.5 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">
                         Action
                       </th>
                     </tr>
                   </thead>
 
                   <tbody className="divide-y divide-slate-100">
-                    {paginatedGames.map((game) => (
-                      <tr
-                        key={game.id}
-                        className="group transition hover:bg-red-50/20"
-                      >
-                        {/* Game */}
-                        <td className="px-5 py-4">
-                          <div className="flex items-center gap-3">
-                            <div className="h-12 w-12 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
-                              {game.image ? (
-                                <img
-                                  src={getImageSource(game.image)}
-                                  alt={game.name}
-                                  className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
-                                  onError={(e) => {
-                                    e.currentTarget.style.display =
-                                      "none";
-                                  }}
-                                />
-                              ) : (
-                                <div className="flex h-full w-full items-center justify-center text-slate-400">
-                                  <Gamepad2 size={20} />
-                                </div>
-                              )}
+                    {paginatedGames.map((game) => {
+                      const imageSrc = getImageSrc(game.image);
+
+                      return (
+                        <tr
+                          key={game.id}
+                          className="transition hover:bg-slate-50/70"
+                        >
+                          {/* Game */}
+                          <td className="px-5 py-4">
+                            <div className="flex min-w-0 items-center gap-3">
+                              <div className="h-12 w-12 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
+                                {imageSrc ? (
+                                  <img
+                                    src={imageSrc}
+                                    alt={game.name}
+                                    className="h-full w-full object-cover"
+                                  />
+                                ) : (
+                                  <div className="flex h-full w-full items-center justify-center text-slate-400">
+                                    <Gamepad2 size={20} />
+                                  </div>
+                                )}
+                              </div>
+
+                              <div className="min-w-0">
+                                <p className="truncate text-sm font-semibold text-slate-900">
+                                  {game.name}
+                                </p>
+
+                                <p className="mt-0.5 text-xs text-slate-400">
+                                  Game #{game.id}
+                                </p>
+                              </div>
                             </div>
+                          </td>
 
-                            <div className="min-w-0">
-                              <p className="truncate text-sm font-bold text-slate-900">
-                                {game.name || "Unnamed Game"}
-                              </p>
+                          {/* Description */}
+                          <td className="max-w-md px-5 py-4">
+                            <p className="line-clamp-2 text-sm leading-6 text-slate-500">
+                              {game.description ||
+                                "No description available."}
+                            </p>
+                          </td>
 
-                              <p className="mt-0.5 text-xs text-slate-400">
-                                Game #{game.id}
-                              </p>
-                            </div>
-                          </div>
-                        </td>
+                          {/* Status */}
+                          <td className="px-5 py-4">
+                            <StatusBadge
+                              isActive={game.isActive}
+                            />
+                          </td>
 
-                        {/* Description */}
-                        <td className="max-w-[420px] px-5 py-4">
-                          <p className="text-sm leading-6 text-slate-600">
-                            {formatDescription(game.description)}
-                          </p>
-                        </td>
-
-                        {/* Status */}
-                        <td className="px-5 py-4">
-                          <StatusBadge isActive={game.isActive} />
-                        </td>
-
-                        {/* Action */}
-                        <td className="px-5 py-4 text-right">
-                          <div
-                            className="relative inline-block"
-                            onClick={(e) => e.stopPropagation()}
-                          >
+                          {/* Action */}
+                          <td className="px-5 py-4 text-right">
                             <button
                               type="button"
-                              onClick={() =>
-                                setOpenMenuId((prev) =>
-                                  prev === game.id
-                                    ? null
-                                    : game.id
+                              aria-label={`Actions for ${game.name}`}
+                              aria-expanded={
+                                openMenuId === game.id
+                              }
+                              onClick={(e) =>
+                                handleActionMenuClick(
+                                  e,
+                                  game.id
                                 )
                               }
-                              className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg text-slate-400 transition hover:bg-red-50 hover:text-red-700"
+                              className={`flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg transition ${
+                                openMenuId === game.id
+                                  ? "bg-red-50 text-red-700"
+                                  : "text-slate-400 hover:bg-red-50 hover:text-red-700"
+                              }`}
                             >
                               <MoreVertical size={18} />
                             </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
+            </div>
 
-                            {openMenuId === game.id && (
-                              <div className="absolute right-0 top-10 z-50 w-40 overflow-hidden rounded-xl border border-slate-200 bg-white p-1.5 text-left shadow-xl">
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    openViewModal(game)
-                                  }
-                                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-                                >
-                                  <Eye
-                                    size={16}
-                                    className="text-slate-400"
-                                  />
-                                  View
-                                </button>
+            {/* ---------------------------------------------------------------- */}
+            {/* Mobile Cards                                                     */}
+            {/* ---------------------------------------------------------------- */}
 
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    openEditModal(game)
-                                  }
-                                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-red-50 hover:text-red-700"
-                                >
-                                  <Edit3 size={16} />
-                                  Edit
-                                </button>
+            <div className="md:hidden">
+              {paginatedGames.length === 0 ? (
+                <EmptyState
+                  search={search}
+                  onCreate={openCreateModal}
+                />
+              ) : (
+                <div className="divide-y divide-slate-100">
+                  {paginatedGames.map((game) => {
+                    const imageSrc = getImageSrc(game.image);
+
+                    return (
+                      <div
+                        key={game.id}
+                        className="p-4 transition hover:bg-slate-50/60"
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className="h-14 w-14 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
+                            {imageSrc ? (
+                              <img
+                                src={imageSrc}
+                                alt={game.name}
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              <div className="flex h-full w-full items-center justify-center text-slate-400">
+                                <Gamepad2 size={21} />
                               </div>
                             )}
                           </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
 
-              {/* Mobile cards */}
-              <div className="divide-y divide-slate-100 md:hidden">
-                {paginatedGames.map((game) => (
-                  <div
-                    key={game.id}
-                    className="p-4 transition hover:bg-slate-50/70"
-                  >
-                    <div className="flex gap-3">
-                      <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
-                        {game.image ? (
-                          <img
-                            src={getImageSource(game.image)}
-                            alt={game.name}
-                            className="h-full w-full object-cover"
-                          />
-                        ) : (
-                          <div className="flex h-full w-full items-center justify-center text-slate-400">
-                            <Gamepad2 size={23} />
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <h3 className="truncate text-sm font-bold text-slate-900">
+                                  {game.name}
+                                </h3>
+
+                                <p className="mt-0.5 text-xs text-slate-400">
+                                  Game #{game.id}
+                                </p>
+                              </div>
+
+                              <button
+                                type="button"
+                                aria-label={`Actions for ${game.name}`}
+                                aria-expanded={
+                                  openMenuId === game.id
+                                }
+                                onClick={(e) =>
+                                  handleActionMenuClick(
+                                    e,
+                                    game.id
+                                  )
+                                }
+                                className={`flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-lg transition ${
+                                  openMenuId === game.id
+                                    ? "bg-red-50 text-red-700"
+                                    : "text-slate-400 hover:bg-red-50 hover:text-red-700"
+                                }`}
+                              >
+                                <MoreVertical size={18} />
+                              </button>
+                            </div>
+
+                            <div className="mt-2">
+                              <StatusBadge
+                                isActive={game.isActive}
+                              />
+                            </div>
                           </div>
-                        )}
-                      </div>
-
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="min-w-0">
-                            <h3 className="truncate text-sm font-bold text-slate-900">
-                              {game.name || "Unnamed Game"}
-                            </h3>
-
-                            <p className="mt-0.5 text-xs text-slate-400">
-                              Game #{game.id}
-                            </p>
-                          </div>
-
-                          <StatusBadge isActive={game.isActive} />
                         </div>
 
-                        <p className="mt-3 text-sm leading-5 text-slate-600">
-                          {formatDescription(game.description)}
+                        <p className="mt-3 line-clamp-3 text-sm leading-6 text-slate-500">
+                          {game.description ||
+                            "No description available."}
                         </p>
                       </div>
-                    </div>
-
-                    <div className="mt-4 flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => openViewModal(game)}
-                        className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
-                      >
-                        <Eye size={16} />
-                        View
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => openEditModal(game)}
-                        className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-xl border border-red-100 bg-red-50 text-sm font-semibold text-red-700 transition hover:bg-red-100"
-                      >
-                        <Edit3 size={16} />
-                        Edit
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Pagination */}
-              <div className="flex flex-col gap-4 border-t border-slate-200 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-                  <p className="text-xs font-medium text-slate-500">
-                    Showing{" "}
-                    <span className="font-semibold text-slate-700">
-                      {pageStart}
-                    </span>{" "}
-                    to{" "}
-                    <span className="font-semibold text-slate-700">
-                      {pageEnd}
-                    </span>{" "}
-                    of{" "}
-                    <span className="font-semibold text-slate-700">
-                      {filteredGames.length}
-                    </span>
-                  </p>
-
-                  <div className="hidden h-4 w-px bg-slate-200 sm:block" />
-
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-slate-400">
-                      Rows
-                    </span>
-
-                    <select
-                      value={itemsPerPage}
-                      onChange={(e) =>
-                        setItemsPerPage(Number(e.target.value))
-                      }
-                      className="h-8 rounded-lg border border-slate-200 bg-white px-2 text-xs font-semibold text-slate-600 outline-none focus:border-red-400 focus:ring-2 focus:ring-red-100"
-                    >
-                      {ITEMS_PER_PAGE_OPTIONS.map((option) => (
-                        <option key={option} value={option}>
-                          {option}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                    );
+                  })}
                 </div>
+              )}
+            </div>
 
-                <div className="flex items-center justify-between gap-2 sm:justify-end">
+            {/* ---------------------------------------------------------------- */}
+            {/* Pagination                                                       */}
+            {/* ---------------------------------------------------------------- */}
+
+            {filteredGames.length > 0 && (
+              <div className="flex flex-col gap-3 border-t border-slate-200 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+                <p className="text-xs text-slate-500">
+                  Showing{" "}
+                  <span className="font-semibold text-slate-700">
+                    {(safeCurrentPage - 1) * PAGE_SIZE + 1}
+                  </span>{" "}
+                  to{" "}
+                  <span className="font-semibold text-slate-700">
+                    {Math.min(
+                      safeCurrentPage * PAGE_SIZE,
+                      filteredGames.length
+                    )}
+                  </span>{" "}
+                  of{" "}
+                  <span className="font-semibold text-slate-700">
+                    {filteredGames.length}
+                  </span>
+                </p>
+
+                <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    disabled={currentPage <= 1}
+                    disabled={safeCurrentPage <= 1}
                     onClick={() =>
-                      setCurrentPage((prev) => Math.max(1, prev - 1))
+                      setCurrentPage((prev) =>
+                        Math.max(1, prev - 1)
+                      )
                     }
-                    className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 transition hover:border-red-200 hover:bg-red-50 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-40"
+                    className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-40"
                   >
-                    <ChevronLeft size={15} />
-                    Previous
+                    <ChevronLeft size={17} />
                   </button>
 
-                  <div className="flex h-9 min-w-9 items-center justify-center rounded-lg bg-red-700 px-3 text-xs font-bold text-white">
-                    {currentPage}
+                  <div className="flex h-9 min-w-9 items-center justify-center rounded-lg bg-red-600 px-3 text-xs font-semibold text-white">
+                    {safeCurrentPage}
                   </div>
 
                   <button
                     type="button"
-                    disabled={currentPage >= totalPages}
+                    disabled={
+                      safeCurrentPage >= totalPages
+                    }
                     onClick={() =>
                       setCurrentPage((prev) =>
                         Math.min(totalPages, prev + 1)
                       )
                     }
-                    className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 transition hover:border-red-200 hover:bg-red-50 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-40"
+                    className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-40"
                   >
-                    Next
-                    <ChevronRight size={15} />
+                    <ChevronRight size={17} />
                   </button>
                 </div>
               </div>
-            </>
-          )}
-        </section>
-      </div>
-    </main>
+            )}
+          </div>
+        </div>
+      </main>
+    </>
   );
 };
 

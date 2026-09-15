@@ -52,3 +52,17 @@ export const updateGame = async (gameData: FormData) => {
         throw error;
     }
 }
+
+export const deleteGame = async (id: number) => {
+  try {
+    const response = await axios.delete(`${GAMES_API_URL}${id}`, {
+      headers: {
+        Authorization: `Bearer ${getToken()}`,
+      },
+    });
+
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
