@@ -50,3 +50,16 @@ export const updateGamingStation = async (stationData: any) => {
         throw error;
     }
 };
+
+export const deleteGamingStation = async (stationId: string) => {
+    try {
+        const response = await axios.delete(`${GAMING_API_URL}${stationId}`, {
+            headers: {
+                Authorization: `Bearer ${getToken()}`,
+            },
+        });
+        return response.data;
+    } catch (error) {
+        throw error;
+    }
+};
