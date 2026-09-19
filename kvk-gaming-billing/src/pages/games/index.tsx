@@ -371,6 +371,9 @@ const GameModal = ({
             <div>
               <label className="mb-2 block text-sm font-semibold text-slate-700">
                 Description
+                <span className="ml-1 text-red-500">
+                  *
+                </span>
               </label>
 
               <textarea
@@ -378,6 +381,7 @@ const GameModal = ({
                 value={form.description}
                 onChange={onChange}
                 rows={4}
+                required
                 placeholder="Enter game description"
                 className="w-full resize-none rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-red-500 focus:ring-4 focus:ring-red-500/10"
               />
@@ -387,6 +391,9 @@ const GameModal = ({
             <div>
               <label className="mb-2 block text-sm font-semibold text-slate-700">
                 Game Image
+                <span className="ml-1 text-red-500">
+                  *
+                </span>
               </label>
 
               <div
@@ -472,7 +479,6 @@ const GameModal = ({
                   <p className="text-sm font-semibold text-slate-800">
                     Game Status
                   </p>
-
                   <p className="mt-1 text-xs text-slate-500">
                     Enable this game when it is available
                     for customers.
@@ -966,12 +972,29 @@ const GamePage = () => {
       return;
     }
 
-    /*
-     * For edit mode, validate and capture the ID.
-     *
-     * This removes the TypeScript error because
-     * gameId is now guaranteed to be a string.
-     */
+    if (!form.description.trim()) {
+      setPageAlert({
+        visible: true,
+        variant: "error",
+        title: "Invalid game description",
+        description:
+          "The game description is required. Please enter a valid description.",
+      });
+      return;
+    }
+
+    if (!imageFile && !imagePreview) {
+      setPageAlert({
+        visible: true,
+        variant: "error",
+        title: "Invalid game image",
+        description:
+          "The game image is required. Please upload a valid image.",
+      });
+
+      return;
+    }
+
     const gameId = form.id?.trim();
 
     if (
@@ -1407,13 +1430,13 @@ const GamePage = () => {
             {loading &&
               createPortal(
                 <div className="fixed inset-0 z-[9999999999] flex items-center justify-center bg-black/60 px-4 backdrop-blur-md">
-                  <div className="w-full max-w-xs rounded-3xl border border-white/20 bg-white/10 p-7 text-center shadow-2xl backdrop-blur-xl">
-                    <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10">
+                  <div className="w-full max-w-xs rounded-3xl p-7 text-center">
+                    <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl">
                       <div className="h-10 w-10 animate-spin rounded-full border-4 border-white/25 border-t-white" />
                     </div>
 
                     <p className="mt-4 text-base font-bold text-white">
-                      Processing your booking
+                      Loading
                     </p>
 
                     <p className="mt-1 text-sm text-white/70">
