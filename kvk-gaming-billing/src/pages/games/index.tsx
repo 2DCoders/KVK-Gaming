@@ -562,28 +562,59 @@ const DeleteConfirmModal = ({
 }) => {
   return createPortal(
     <div
-      className="fixed inset-0 z-[99991] flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm"
+      className="
+        fixed inset-0
+        z-[9999999999]
+        flex items-center justify-center
+        bg-slate-950/50
+        p-4
+        backdrop-blur-sm
+      "
       onMouseDown={(e) => {
-        if (e.target === e.currentTarget) {
-          if (!deleting) {
-            onClose();
-          }
+        if (e.target === e.currentTarget && !deleting) {
+          onClose();
         }
       }}
     >
       <div
-        className="w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
+        className="
+          w-full max-w-md
+          overflow-hidden
+          rounded-2xl
+          border border-slate-200
+          bg-white
+          shadow-2xl
+        "
         onMouseDown={(e) => e.stopPropagation()}
       >
-        <div className="p-6">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-red-50 text-red-600">
-            <Trash2 size={22} />
+
+        {/* ==================================================
+            MODAL CONTENT
+        ================================================== */}
+        <div className="p-6 space-y-4 text-center">
+
+          {/* ICON + CLOSE */}
+          <div className="flex items-center justify-center">
+
+            <div
+              className="
+                flex h-12 w-12
+                items-center justify-center
+                rounded-xl
+                bg-red-50
+                text-red-600
+              "
+            >
+              <Trash2 size={22} />
+            </div>
           </div>
 
+          {/* TITLE */}
           <h3 className="mt-5 text-lg font-bold text-slate-900">
-            Delete Game?
+            Delete Game
           </h3>
 
+          {/* DESCRIPTION */}
           <p className="mt-2 text-sm leading-6 text-slate-500">
             Are you sure you want to delete{" "}
             <span className="font-semibold text-slate-700">
@@ -591,30 +622,91 @@ const DeleteConfirmModal = ({
             </span>
             ?
           </p>
+
+          <p className="mt-2 text-xs text-slate-400">
+            This action cannot be undone.
+          </p>
+
         </div>
 
-        <div className="flex flex-col-reverse gap-3 border-t border-slate-200 bg-slate-50/70 px-6 py-4 sm:flex-row sm:justify-end">
+        {/* ==================================================
+            FOOTER
+        ================================================== */}
+        <div
+          className="
+            flex flex-col-reverse gap-3
+            border-t border-slate-200
+            bg-slate-50/70
+            px-6 py-4
+            sm:flex-row
+            sm:justify-end
+          "
+        >
+
+          {/* CANCEL */}
           <button
             type="button"
             onClick={onClose}
             disabled={deleting}
-            className="w-full cursor-pointer rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+            className="
+              w-full
+              cursor-pointer
+              rounded-xl
+              border border-slate-200
+              bg-white
+              px-5 py-2.5
+              text-sm font-semibold
+              text-slate-700
+              transition
+              hover:bg-slate-50
+              disabled:cursor-not-allowed
+              disabled:opacity-60
+              sm:w-auto
+            "
           >
             Cancel
           </button>
 
+          {/* DELETE */}
           <button
             type="button"
             onClick={onConfirm}
             disabled={deleting}
-            className="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-red-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+            className="
+              inline-flex
+              w-full
+              cursor-pointer
+              items-center
+              justify-center
+              gap-2
+              rounded-xl
+              bg-red-600
+              px-5 py-2.5
+              text-sm font-semibold
+              text-white
+              transition
+              hover:bg-red-700
+              disabled:cursor-not-allowed
+              disabled:opacity-60
+              sm:w-auto
+            "
           >
             {deleting && (
-              <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+              <div
+                className="
+                  h-4 w-4
+                  animate-spin
+                  rounded-full
+                  border-2
+                  border-white/40
+                  border-t-white
+                "
+              />
             )}
 
-            Delete
+            {deleting ? "Deleting..." : "Delete"}
           </button>
+
         </div>
       </div>
     </div>,
