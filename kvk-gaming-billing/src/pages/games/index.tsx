@@ -26,6 +26,7 @@ import {
   getGames,
   updateGame,
 } from "@/services/game-api";
+import Alert from "@/components/ui/alert";
 
 /* -------------------------------------------------------------------------- */
 /* Types                                                                      */
@@ -196,92 +197,20 @@ const StatusBadge = ({
 }) => {
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${
-        isActive
-          ? "bg-emerald-50 text-emerald-700"
-          : "bg-slate-100 text-slate-500"
-      }`}
+      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${isActive
+        ? "bg-emerald-50 text-emerald-700"
+        : "bg-slate-100 text-slate-500"
+        }`}
     >
       <span
-        className={`h-1.5 w-1.5 rounded-full ${
-          isActive
-            ? "bg-emerald-500"
-            : "bg-slate-400"
-        }`}
+        className={`h-1.5 w-1.5 rounded-full ${isActive
+          ? "bg-emerald-500"
+          : "bg-slate-400"
+          }`}
       />
 
       {isActive ? "Active" : "Inactive"}
     </span>
-  );
-};
-
-/* -------------------------------------------------------------------------- */
-/* Loading Overlay                                                            */
-/* -------------------------------------------------------------------------- */
-
-const LoadingOverlay = () => {
-  return (
-    <div className="absolute inset-0 z-30 flex items-center justify-center bg-white/70 backdrop-blur-[2px]">
-      <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-5 py-3 shadow-lg">
-        <div className="h-5 w-5 animate-spin rounded-full border-2 border-slate-200 border-t-red-600" />
-
-        <span className="text-sm font-medium text-slate-700">
-          Loading games...
-        </span>
-      </div>
-    </div>
-  );
-};
-
-/* -------------------------------------------------------------------------- */
-/* Alert                                                                      */
-/* -------------------------------------------------------------------------- */
-
-const AlertMessage = ({
-  message,
-  type,
-  onClose,
-}: {
-  message: string;
-  type: "success" | "error";
-  onClose: () => void;
-}) => {
-  return (
-    <div
-      className={`mb-5 flex items-start justify-between gap-4 rounded-xl border px-4 py-3 ${
-        type === "success"
-          ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-          : "border-red-200 bg-red-50 text-red-800"
-      }`}
-    >
-      <div className="flex items-start gap-3">
-        <div
-          className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${
-            type === "success"
-              ? "bg-emerald-100"
-              : "bg-red-100"
-          }`}
-        >
-          {type === "success" ? (
-            <Check size={14} />
-          ) : (
-            <X size={14} />
-          )}
-        </div>
-
-        <p className="text-sm font-medium">
-          {message}
-        </p>
-      </div>
-
-      <button
-        type="button"
-        onClick={onClose}
-        className="cursor-pointer rounded-md p-1 opacity-60 transition hover:bg-black/5 hover:opacity-100"
-      >
-        <X size={16} />
-      </button>
-    </div>
   );
 };
 
@@ -464,11 +393,10 @@ const GameModal = ({
                 onDrop={onDrop}
                 onDragOver={onDragOver}
                 onDragLeave={onDragLeave}
-                className={`relative overflow-hidden rounded-2xl border-2 border-dashed transition ${
-                  dragging
-                    ? "border-red-500 bg-red-50"
-                    : "border-slate-200 bg-slate-50/70 hover:border-red-300 hover:bg-red-50/30"
-                }`}
+                className={`relative overflow-hidden rounded-2xl border-2 border-dashed transition ${dragging
+                  ? "border-red-500 bg-red-50"
+                  : "border-slate-200 bg-slate-50/70 hover:border-red-300 hover:bg-red-50/30"
+                  }`}
               >
                 {imagePreview ? (
                   <div className="relative">
@@ -494,7 +422,7 @@ const GameModal = ({
                           onChange={(e) =>
                             onImageChange(
                               e.target.files?.[0] ??
-                                null
+                              null
                             )
                           }
                         />
@@ -528,7 +456,7 @@ const GameModal = ({
                       onChange={(e) =>
                         onImageChange(
                           e.target.files?.[0] ??
-                            null
+                          null
                         )
                       }
                     />
@@ -563,18 +491,16 @@ const GameModal = ({
                       },
                     } as any)
                   }
-                  className={`relative h-6 w-11 shrink-0 cursor-pointer rounded-full transition ${
-                    form.isActive
-                      ? "bg-red-600"
-                      : "bg-slate-300"
-                  }`}
+                  className={`relative h-6 w-11 shrink-0 cursor-pointer rounded-full transition ${form.isActive
+                    ? "bg-red-600"
+                    : "bg-slate-300"
+                    }`}
                 >
                   <span
-                    className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow-sm transition ${
-                      form.isActive
-                        ? "left-6"
-                        : "left-1"
-                    }`}
+                    className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow-sm transition ${form.isActive
+                      ? "left-6"
+                      : "left-1"
+                      }`}
                   />
                 </button>
               </div>
@@ -706,6 +632,14 @@ const GamePage = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] =
     useState<ModalMode>("create");
+  const [pageAlert, setPageAlert] = useState<{
+    visible: boolean;
+    variant?: "success" | "error" | "warning" | "info";
+    title?: string;
+    description?: string;
+  }>({
+    visible: false,
+  });
 
   const [form, setForm] = useState<GameForm>({
     name: "",
@@ -720,11 +654,6 @@ const GamePage = () => {
     useState<string | null>(null);
 
   const [dragging, setDragging] = useState(false);
-
-  const [alert, setAlert] = useState<{
-    type: "success" | "error";
-    message: string;
-  } | null>(null);
 
   /* ------------------------------------------------------------------------ */
   /* Action Menu State                                                        */
@@ -757,15 +686,7 @@ const GamePage = () => {
 
       setGames(normalized);
     } catch (error) {
-      console.error(
-        "Failed to load games:",
-        error
-      );
-
-      setAlert({
-        type: "error",
-        message: "Failed to load games.",
-      });
+      console.error("Failed to load games:", error);
     } finally {
       setLoading(false);
     }
@@ -974,9 +895,11 @@ const GamePage = () => {
     if (!file) return;
 
     if (!file.type.startsWith("image/")) {
-      setAlert({
-        type: "error",
-        message:
+      setPageAlert({
+        visible: true,
+        variant: "error",
+        title: "Invalid image file",
+        description:
           "Please select a valid image file.",
       });
 
@@ -1032,10 +955,12 @@ const GamePage = () => {
     e.preventDefault();
 
     if (!form.name.trim()) {
-      setAlert({
-        type: "error",
-        message:
-          "Game name is required.",
+      setPageAlert({
+        visible: true,
+        variant: "error",
+        title: "Invalid game name",
+        description:
+          "The game name is required. Please enter a valid name.",
       });
 
       return;
@@ -1053,14 +978,18 @@ const GamePage = () => {
       modalMode === "edit" &&
       !gameId
     ) {
-      setAlert({
-        type: "error",
-        message:
-          "Unable to update this game because its ID is invalid.",
+      setPageAlert({
+        visible: true,
+        variant: "error",
+        title: "Invalid game ID",
+        description:
+          "The game ID is missing or invalid. Please try again.",
       });
 
       return;
     }
+
+    setLoading(true);
 
     try {
       setSubmitting(true);
@@ -1092,9 +1021,11 @@ const GamePage = () => {
       if (modalMode === "create") {
         await createGame(formData);
 
-        setAlert({
-          type: "success",
-          message:
+        setPageAlert({
+          visible: true,
+          variant: "success",
+          title: "Game created",
+          description:
             "Game created successfully.",
         });
       } else {
@@ -1109,9 +1040,11 @@ const GamePage = () => {
 
         await updateGame(formData);
 
-        setAlert({
-          type: "success",
-          message:
+        setPageAlert({
+          visible: true,
+          variant: "success",
+          title: "Game updated",
+          description:
             "Game updated successfully.",
         });
       }
@@ -1127,14 +1060,17 @@ const GamePage = () => {
         error
       );
 
-      setAlert({
-        type: "error",
-        message:
+      setPageAlert({
+        visible: true,
+        variant: "error",
+        title: "Failed to save game",
+        description:
           modalMode === "create"
             ? "Failed to create game."
             : "Failed to update game.",
       });
     } finally {
+      setLoading(false);
       setSubmitting(false);
     }
   };
@@ -1146,6 +1082,7 @@ const GamePage = () => {
   const handleDelete = async () => {
     if (!deleteGame) return;
 
+    setLoading(true);
     try {
       setDeleting(true);
 
@@ -1155,9 +1092,11 @@ const GamePage = () => {
 
       setDeleteGame(null);
 
-      setAlert({
-        type: "success",
-        message:
+      setPageAlert({
+        visible: true,
+        variant: "success",
+        title: "Game deleted",
+        description:
           "Game deleted successfully.",
       });
 
@@ -1168,12 +1107,15 @@ const GamePage = () => {
         error
       );
 
-      setAlert({
-        type: "error",
-        message:
-          "Failed to delete game.",
+      setPageAlert({
+        visible: true,
+        variant: "error",
+        title: "Failed to delete game",
+        description:
+          "An error occurred while deleting the game. Please try again.",
       });
     } finally {
+      setLoading(false);
       setDeleting(false);
     }
   };
@@ -1214,7 +1156,7 @@ const GamePage = () => {
     if (
       left + menuWidth >
       window.innerWidth -
-        viewportPadding
+      viewportPadding
     ) {
       left =
         window.innerWidth -
@@ -1231,7 +1173,7 @@ const GamePage = () => {
     if (
       top + menuHeight >
       window.innerHeight -
-        viewportPadding
+      viewportPadding
     ) {
       top =
         rect.top -
@@ -1259,83 +1201,83 @@ const GamePage = () => {
 
   const actionMenu =
     openMenuGame &&
-    menuPosition
+      menuPosition
       ? createPortal(
-          <div
-            className="fixed z-[999999] w-44 overflow-hidden rounded-xl border border-slate-200 bg-white p-1.5 shadow-2xl"
-            style={{
-              top: menuPosition.top,
-              left: menuPosition.left,
-            }}
-            onMouseDown={(e) => {
-              e.stopPropagation();
-            }}
+        <div
+          className="fixed z-[999999] w-44 overflow-hidden rounded-xl border border-slate-200 bg-white p-1.5 shadow-2xl"
+          style={{
+            top: menuPosition.top,
+            left: menuPosition.left,
+          }}
+          onMouseDown={(e) => {
+            e.stopPropagation();
+          }}
+          onClick={(e) => {
+            e.stopPropagation();
+          }}
+        >
+          {/* Update */}
+          <button
+            type="button"
             onClick={(e) => {
+              e.preventDefault();
               e.stopPropagation();
+
+              const selectedGame =
+                openMenuGame;
+
+              if (!selectedGame) return;
+
+              setOpenMenuGame(null);
+              setMenuPosition(null);
+
+              requestAnimationFrame(() => {
+                openEditModal(
+                  selectedGame
+                );
+              });
             }}
+            className="flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-slate-700 transition hover:bg-red-50 hover:text-red-700"
           >
-            {/* Update */}
-            <button
-              type="button"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
+            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-50 text-slate-500">
+              <Edit3 size={15} />
+            </span>
 
-                const selectedGame =
-                  openMenuGame;
+            <span>Update</span>
+          </button>
 
-                if (!selectedGame) return;
+          {/* Delete */}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
 
-                setOpenMenuGame(null);
-                setMenuPosition(null);
+              const selectedGame =
+                openMenuGame;
 
-                requestAnimationFrame(() => {
-                  openEditModal(
-                    selectedGame
-                  );
-                });
-              }}
-              className="flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-slate-700 transition hover:bg-red-50 hover:text-red-700"
-            >
-              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-50 text-slate-500">
-                <Edit3 size={15} />
-              </span>
+              if (!selectedGame) return;
 
-              <span>Update</span>
-            </button>
+              setOpenMenuGame(null);
+              setMenuPosition(null);
 
-            {/* Delete */}
-            <button
-              type="button"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
+              requestAnimationFrame(() => {
+                setDeleteGame(
+                  selectedGame
+                );
+              });
+            }}
+            className="flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-red-600 transition hover:bg-red-50"
+          >
+            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-red-50 text-red-500">
+              <Trash2 size={15} />
+            </span>
 
-                const selectedGame =
-                  openMenuGame;
-
-                if (!selectedGame) return;
-
-                setOpenMenuGame(null);
-                setMenuPosition(null);
-
-                requestAnimationFrame(() => {
-                  setDeleteGame(
-                    selectedGame
-                  );
-                });
-              }}
-              className="flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-red-600 transition hover:bg-red-50"
-            >
-              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-red-50 text-red-500">
-                <Trash2 size={15} />
-              </span>
-
-              <span>Delete</span>
-            </button>
-          </div>,
-          document.body
-        )
+            <span>Delete</span>
+          </button>
+        </div>,
+        document.body
+      )
       : null;
 
   /* ------------------------------------------------------------------------ */
@@ -1364,6 +1306,20 @@ const GamePage = () => {
           onDragOver={handleDragOver}
           onDragLeave={
             handleDragLeave
+          }
+        />
+      )}
+
+      {pageAlert.visible && (
+        <Alert
+          variant={pageAlert.variant}
+          title={pageAlert.title}
+          description={pageAlert.description}
+          onClose={() =>
+            setPageAlert((current) => ({
+              ...current,
+              visible: false,
+            }))
           }
         />
       )}
@@ -1417,17 +1373,6 @@ const GamePage = () => {
             </button>
           </div>
 
-          {/* Alert */}
-          {alert && (
-            <AlertMessage
-              message={alert.message}
-              type={alert.type}
-              onClose={() =>
-                setAlert(null)
-              }
-            />
-          )}
-
           {/* Summary */}
           <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
             <SummaryCard
@@ -1458,9 +1403,26 @@ const GamePage = () => {
 
           {/* Main Card */}
           <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-            {loading && (
-              <LoadingOverlay />
-            )}
+            {/* Loading */}
+            {loading &&
+              createPortal(
+                <div className="fixed inset-0 z-[9999999999] flex items-center justify-center bg-black/60 px-4 backdrop-blur-md">
+                  <div className="w-full max-w-xs rounded-3xl border border-white/20 bg-white/10 p-7 text-center shadow-2xl backdrop-blur-xl">
+                    <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10">
+                      <div className="h-10 w-10 animate-spin rounded-full border-4 border-white/25 border-t-white" />
+                    </div>
+
+                    <p className="mt-4 text-base font-bold text-white">
+                      Processing your booking
+                    </p>
+
+                    <p className="mt-1 text-sm text-white/70">
+                      Please wait a moment...
+                    </p>
+                  </div>
+                </div>,
+                document.body
+              )}
 
             {/* Toolbar */}
             <div className="border-b border-slate-200 p-4 sm:p-5">
@@ -1473,7 +1435,7 @@ const GamePage = () => {
                   <p className="mt-1 text-xs text-slate-500">
                     {filteredGames.length}{" "}
                     {filteredGames.length ===
-                    1
+                      1
                       ? "game"
                       : "games"}{" "}
                     found
@@ -1516,7 +1478,7 @@ const GamePage = () => {
             {/* Desktop Table */}
             <div className="hidden overflow-x-auto md:block">
               {paginatedGames.length ===
-              0 ? (
+                0 ? (
                 <EmptyState
                   search={search}
                   onCreate={
@@ -1628,12 +1590,11 @@ const GamePage = () => {
                                     game
                                   )
                                 }
-                                className={`flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg transition ${
-                                  openMenuGame?.id ===
+                                className={`flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg transition ${openMenuGame?.id ===
                                   game.id
-                                    ? "bg-red-50 text-red-700"
-                                    : "text-slate-400 hover:bg-red-50 hover:text-red-700"
-                                }`}
+                                  ? "bg-red-50 text-red-700"
+                                  : "text-slate-400 hover:bg-red-50 hover:text-red-700"
+                                  }`}
                               >
                                 <MoreVertical
                                   size={18}
@@ -1652,7 +1613,7 @@ const GamePage = () => {
             {/* Mobile Cards */}
             <div className="md:hidden">
               {paginatedGames.length ===
-              0 ? (
+                0 ? (
                 <EmptyState
                   search={search}
                   onCreate={
@@ -1726,12 +1687,11 @@ const GamePage = () => {
                                       game
                                     )
                                   }
-                                  className={`flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-lg transition ${
-                                    openMenuGame?.id ===
+                                  className={`flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-lg transition ${openMenuGame?.id ===
                                     game.id
-                                      ? "bg-red-50 text-red-700"
-                                      : "text-slate-400 hover:bg-red-50 hover:text-red-700"
-                                  }`}
+                                    ? "bg-red-50 text-red-700"
+                                    : "text-slate-400 hover:bg-red-50 hover:text-red-700"
+                                    }`}
                                 >
                                   <MoreVertical
                                     size={
@@ -1766,84 +1726,84 @@ const GamePage = () => {
             {/* Pagination */}
             {filteredGames.length >
               0 && (
-              <div className="flex flex-col gap-3 border-t border-slate-200 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
-                <p className="text-xs text-slate-500">
-                  Showing{" "}
-                  <span className="font-semibold text-slate-700">
-                    {(safeCurrentPage -
-                      1) *
-                      PAGE_SIZE +
-                      1}
-                  </span>{" "}
-                  to{" "}
-                  <span className="font-semibold text-slate-700">
-                    {Math.min(
-                      safeCurrentPage *
+                <div className="flex flex-col gap-3 border-t border-slate-200 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+                  <p className="text-xs text-slate-500">
+                    Showing{" "}
+                    <span className="font-semibold text-slate-700">
+                      {(safeCurrentPage -
+                        1) *
+                        PAGE_SIZE +
+                        1}
+                    </span>{" "}
+                    to{" "}
+                    <span className="font-semibold text-slate-700">
+                      {Math.min(
+                        safeCurrentPage *
                         PAGE_SIZE,
-                      filteredGames.length
-                    )}
-                  </span>{" "}
-                  of{" "}
-                  <span className="font-semibold text-slate-700">
-                    {
-                      filteredGames.length
-                    }
-                  </span>
-                </p>
+                        filteredGames.length
+                      )}
+                    </span>{" "}
+                    of{" "}
+                    <span className="font-semibold text-slate-700">
+                      {
+                        filteredGames.length
+                      }
+                    </span>
+                  </p>
 
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    disabled={
-                      safeCurrentPage <=
-                      1
-                    }
-                    onClick={() =>
-                      setCurrentPage(
-                        (prev) =>
-                          Math.max(
-                            1,
-                            prev - 1
-                          )
-                      )
-                    }
-                    className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    <ChevronLeft
-                      size={17}
-                    />
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      disabled={
+                        safeCurrentPage <=
+                        1
+                      }
+                      onClick={() =>
+                        setCurrentPage(
+                          (prev) =>
+                            Math.max(
+                              1,
+                              prev - 1
+                            )
+                        )
+                      }
+                      className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      <ChevronLeft
+                        size={17}
+                      />
+                    </button>
 
-                  <div className="flex h-9 min-w-9 items-center justify-center rounded-lg bg-red-600 px-3 text-xs font-semibold text-white">
-                    {
-                      safeCurrentPage
-                    }
+                    <div className="flex h-9 min-w-9 items-center justify-center rounded-lg bg-red-600 px-3 text-xs font-semibold text-white">
+                      {
+                        safeCurrentPage
+                      }
+                    </div>
+
+                    <button
+                      type="button"
+                      disabled={
+                        safeCurrentPage >=
+                        totalPages
+                      }
+                      onClick={() =>
+                        setCurrentPage(
+                          (prev) =>
+                            Math.min(
+                              totalPages,
+                              prev + 1
+                            )
+                        )
+                      }
+                      className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      <ChevronRight
+                        size={17}
+                      />
+                    </button>
                   </div>
-
-                  <button
-                    type="button"
-                    disabled={
-                      safeCurrentPage >=
-                      totalPages
-                    }
-                    onClick={() =>
-                      setCurrentPage(
-                        (prev) =>
-                          Math.min(
-                            totalPages,
-                            prev + 1
-                          )
-                      )
-                    }
-                    className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    <ChevronRight
-                      size={17}
-                    />
-                  </button>
                 </div>
-              </div>
-            )}
+              )}
           </div>
         </div>
       </main>

@@ -61,7 +61,7 @@ export function Alert({
   }
 
   return createPortal(
-    <div className="fixed right-4 top-4 w-[calc(100vw-2rem)] max-w-sm pointer-events-none sm:right-6 sm:top-6" style={{ zIndex: 1000000 }} role="presentation">
+    <div className="fixed right-4 top-4 w-[calc(100vw-2rem)] max-w-sm pointer-events-none sm:right-6 sm:top-6" style={{ zIndex: 10000000 }} role="presentation">
       <style>
         {`@keyframes alert-slide-in {
           0% { opacity: 0; transform: translateX(24px) scale(0.98); }
