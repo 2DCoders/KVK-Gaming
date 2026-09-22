@@ -38,6 +38,7 @@ export default function MovieRoomsSettings() {
   const [endTime, setEndTime] = useState("22:00");
   const [duration, setDuration] = useState(60);
   const [gap, setGap] = useState(0);
+  const [price, setPrice] = useState("0.00");
   const [isConfigure, setIsConfigure] = useState(false);
 
   // Delete confirmation
@@ -272,6 +273,10 @@ export default function MovieRoomsSettings() {
         )
       );
 
+      setPrice(
+        Number(response.price ?? 0).toFixed(2)
+      );
+
       setId(response.id);
       setIsConfigure(true);
     } catch (error) {
@@ -279,6 +284,7 @@ export default function MovieRoomsSettings() {
       setEndTime("22:00");
       setDuration(60);
       setGap(0);
+      setPrice("0.00");
       setIsConfigure(false);
     }
   };
@@ -308,18 +314,7 @@ export default function MovieRoomsSettings() {
         slotDurationMinutes: duration,
         slotGapMinutes: gap,
         isActive: 1,
-        price: 0,
-      });
-
-      console.log("Updated slot configuration:", {
-        id: configId,
-        gamingCategoryId: movieRoomsCategoryId,
-        startTime,
-        endTime,
-        slotDurationMinutes: duration,
-        slotGapMinutes: gap,
-        isActive: 1,
-        price: 0,
+        price: Number(price),
       });
 
       setPageAlert({
@@ -369,6 +364,7 @@ export default function MovieRoomsSettings() {
         slotDurationMinutes: duration,
         slotGapMinutes: gap,
         isActive: 1,
+        price: Number(price),
       });
 
       setPageAlert({
@@ -470,7 +466,7 @@ export default function MovieRoomsSettings() {
         =================================================== */}
         <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-200 p-6">
           <h2 className="font-semibold mb-6">
-              Movie Room Configuration
+            Movie Room Configuration
           </h2>
 
           <div className="space-y-5 grid md:grid-cols-1 gap-5">
@@ -755,7 +751,45 @@ export default function MovieRoomsSettings() {
               className="w-full h-11 rounded-xl border border-gray-200 px-3"
             />
           </div>
+          {/* PRICE */}
+          <div>
+            <label className="text-sm text-gray-600 block mb-2">
+              Price
+            </label>
+
+            <input
+              type="text"
+              inputMode="decimal"
+              value={price}
+              onFocus={(e) => e.target.select()}
+              onChange={(e) => {
+                const value = e.target.value;
+
+                // Allow empty value
+                if (value === "") {
+                  setPrice("");
+                  return;
+                }
+
+                // Only allow numbers with maximum 2 decimal places
+                if (/^\d+(\.\d{0,2})?$/.test(value)) {
+                  setPrice(value);
+                }
+              }}
+              onBlur={() => {
+                if (price === "") {
+                  setPrice("0.00");
+                  return;
+                }
+
+                setPrice(Number(price).toFixed(2));
+              }}
+              placeholder="0.00"
+              className="w-full h-11 rounded-xl border border-gray-200 px-3 outline-none focus:border-red-400 focus:ring-2 focus:ring-red-100"
+            />
+          </div>
         </div>
+
 
         {/* SLOT ACTION */}
         <div className="flex justify-end mt-6">
