@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
-import { Calendar, ChevronRight } from "lucide-react";
+import { Calendar, ChevronRight, X } from "lucide-react";
 import { getCategories } from "@/services/categories-api";
 import { getGamingStationsByCategory } from "@/services/gaming-stations-api";
 import { getSlotsAvailability } from "@/services/slots-api";
 import { multiHoldBooking } from "@/services/bookings-api";
 import { useNavigate } from "react-router-dom";
 import { getNextWorkingDays } from "@/services/holidays-api";
+import { createPortal } from "react-dom";
 
 export default function Bookings() {
   const [selectedDate, setSelectedDate] = useState(0);
@@ -16,6 +17,7 @@ export default function Bookings() {
   const [slotsAvailability, setSlotsAvailability] = useState<any[]>([]);
   const [selectedGamingStation, setSelectedGamingStation] = useState("");
   const [selectedSlots, setSelectedSlots] = useState<string[]>([]);
+  const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
 
   const formatTime = (time: string) => {
     const [hours, minutes] = time.split(":").map(Number);
@@ -165,14 +167,20 @@ export default function Bookings() {
       const request = {
         bookings,
         totalAmount,
+        customerName: "",
+        customerPhone: "",
         paymentTypes: 0,
       };
 
-      console.log(request);
-
+      // HOLD selected slots
       await multiHoldBooking(request);
+
+      // Open customer details modal after successful hold
+      setIsBookingModalOpen(true);
+
     } catch (error) {
-      console.error("Error booking slots:", error);
+      console.error("Error holding booking slots:", error);
+      alert("Unable to hold the selected slots. Please try again.");
     }
   };
 
@@ -441,7 +449,11 @@ export default function Bookings() {
                 </span>
               </div>
 
-              <button className="w-full cursor-pointer h-12 rounded-xl bg-gradient-to-r from-red-500 via-red-600 to-red-700 text-white font-medium flex items-center justify-center gap-2">
+              <button
+                onClick={handleBooking}
+                disabled={selectedSlots.length === 0}
+                className="w-full cursor-pointer h-12 rounded-xl bg-gradient-to-r from-red-500 via-red-600 to-red-700 text-white font-medium flex items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-50"
+              >
                 Confirm Booking
                 <ChevronRight size={18} />
               </button>
@@ -449,6 +461,209 @@ export default function Bookings() {
           </div>
         </div>
       </div>
+
+      {isBookingModalOpen &&
+        createPortal(
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+            <div className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white">
+
+              {/* Header */}
+              <div className="flex items-center justify-between border-b p-5">
+                <div>
+                  <h2 className="text-2xl font-semibold">
+                    Confirm Booking
+                  </h2>
+
+                  <p className="text-sm text-gray-500">
+                    Complete customer details before confirming.
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => {
+                    setIsBookingModalOpen(false);
+
+                    // Refresh availability after closing
+                    handleGetSlotsAvailability(
+                      selectedGamingStation,
+                      selectedStation,
+                      days[selectedDate].date
+                    );
+                  }}
+                  className="p-2 rounded-full cursor-pointer hover:bg-gray-100"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className="flex-1 overflow-y-auto px-6 py-5">
+
+                {/* Customer Details */}
+                <div>
+
+                  <div className="grid gap-4 md:grid-cols-2">
+
+                    <div>
+                      <label className="text-sm font-medium">
+                        Customer Name
+                      </label>
+
+                      <input
+                        className="mt-1 w-full rounded-lg border px-3 py-2 outline-none focus:border-red-500"
+                        placeholder="Enter customer name"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-sm font-medium">
+                        Phone Number
+                      </label>
+
+                      <input
+                        type="tel"
+                        inputMode="numeric"
+                        maxLength={10}
+                        className="mt-1 w-full rounded-lg border px-3 py-2 outline-none focus:border-red-500"
+                        placeholder="07XXXXXXXX"
+                      />
+                    </div>
+
+                  </div>
+
+                </div>
+
+                {/* Payment */}
+                <div className="mt-6 mb-6 border-t pt-6">
+
+                  <h3 className="font-semibold mb-3">
+                    Payment Method
+                  </h3>
+
+                  <div className="flex gap-4">
+
+                    <label className="flex items-center gap-3 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="paymentType"
+                        value="1"
+                      />
+
+                      Cash
+                    </label>
+
+                    <label className="flex items-center gap-3 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="paymentType"
+                        value="2"
+                      />
+
+                      Card
+                    </label>
+
+                  </div>
+
+                </div>
+
+                {/* Booking Summary */}
+                <div>
+
+                  <h3 className="font-semibold mb-3">
+                    Booking Summary
+                  </h3>
+
+                  <div className="rounded-xl border">
+
+                    <div className="border-b p-4">
+
+                      <div className="font-medium mb-2">
+                        {
+                          gamingStations.find(
+                            (x) => x.id === selectedGamingStation
+                          )?.name
+                        }
+                      </div>
+
+                      <div className="space-y-1">
+
+                        {selectedSlotObjects.map((slot: any) => (
+                          <div
+                            key={slot.id}
+                            className="flex justify-between text-sm text-gray-600"
+                          >
+                            <span>
+                              {slot.startTime} - {slot.endTime}
+                            </span>
+
+                            <span>
+                              Rs. {Number(slot.price).toLocaleString()}
+                            </span>
+                          </div>
+                        ))}
+
+                      </div>
+
+                    </div>
+
+                    <div className="p-4 space-y-2">
+
+                      <div className="flex justify-between">
+                        <span>Total Slots</span>
+
+                        <span>
+                          {selectedSlots.length}
+                        </span>
+                      </div>
+
+                      <div className="flex justify-between">
+
+                        <span>Total Amount</span>
+
+                        <span className="font-bold text-lg text-red-600">
+                          Rs. {totalAmount.toLocaleString()}
+                        </span>
+
+                      </div>
+
+                    </div>
+
+                  </div>
+
+                </div>
+
+              </div>
+
+              {/* Footer */}
+              <div className="flex justify-end gap-3 border-t bg-white p-5">
+
+                <button
+                  onClick={() => {
+                    setIsBookingModalOpen(false);
+
+                    handleGetSlotsAvailability(
+                      selectedGamingStation,
+                      selectedStation,
+                      days[selectedDate].date
+                    );
+                  }}
+                  className="rounded-lg border px-5 py-2 cursor-pointer text-gray-700 font-medium hover:bg-gray-100"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  className="rounded-lg bg-red-600 px-6 py-2 text-white font-medium cursor-pointer"
+                >
+                  Confirm Booking
+                </button>
+
+              </div>
+
+            </div>
+          </div>,
+          document.body
+        )}
     </div>
   );
 }
