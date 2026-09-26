@@ -7,7 +7,6 @@ import type {
 import { createPortal } from "react-dom";
 import {
   Activity,
-  Check,
   ChevronLeft,
   ChevronRight,
   Edit3,
@@ -27,6 +26,7 @@ import {
   updateGame,
 } from "@/services/game-api";
 import Alert from "@/components/ui/alert";
+import { useNavigate } from "react-router-dom";
 
 /* -------------------------------------------------------------------------- */
 /* Types                                                                      */
@@ -769,6 +769,18 @@ const GamePage = () => {
     useState<Game | null>(null);
 
   const [deleting, setDeleting] = useState(false);
+
+  const navigate = useNavigate();
+
+  const dayendData = localStorage.getItem("dayEndData")
+    ? JSON.parse(localStorage.getItem("dayEndData") as string)
+    : null;
+
+  useEffect(() => {
+    if (!dayendData) {
+      navigate("/dayend");
+    }
+  }, [dayendData, navigate]);
 
   /* ------------------------------------------------------------------------ */
   /* Load Games                                                               */

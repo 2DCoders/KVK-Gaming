@@ -24,3 +24,16 @@ export const multiHoldBooking = async (bookingData: any) => {
         throw error;
     }
 }
+
+export const confirmBooking = async (bookingData: any) => {
+    try {
+        const response = await axios.post(`${BOOKINGS_API_URL}confirm-multi`, bookingData, {
+            headers: {
+                Authorization: `Bearer ${getToken()}`,
+            },
+        });
+        return response.data;
+    } catch (error) {
+        throw error;
+    }
+}
