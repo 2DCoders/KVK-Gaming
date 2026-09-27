@@ -1,5 +1,5 @@
 import { useLocation, useNavigate } from "react-router-dom";
-import { CheckSquare, Settings, ChevronDown, Calendar, Gamepad2 } from "lucide-react";
+import { CheckSquare, Settings, ChevronDown, Calendar, CalendarClock, Gamepad2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { getCategories } from "@/services/categories-api";
 import { getDayEndData } from "@/services/dayend-api";
@@ -129,6 +129,13 @@ export default function Sidebar({ isOpen, isMobile, onClose }: SidebarProps) {
       label: "Bookings",
       icon: Calendar,
       path: "/bookings",
+      submenu: null,
+    },
+    {
+      id: "today",
+      label: "Today's Schedule",
+      icon: CalendarClock,
+      path: "/today",
       submenu: null,
     },
     {

@@ -37,3 +37,32 @@ export const confirmBooking = async (bookingData: any) => {
         throw error;
     }
 }
+
+export const getGamingBookingsList = async (params: {
+    fromDate?: string;
+    toDate?: string;
+    status?: number;
+    searchTerm?: string;
+    pageNumber?: number;
+    pageSize?: number;
+}) => {
+    try {
+        const query = new URLSearchParams(
+            Object.entries(params).reduce((acc, [key, value]) => {
+                if (value !== undefined && value !== null && value !== "") {
+                    acc[key] = String(value);
+                }
+                return acc;
+            }, {} as Record<string, string>),
+        ).toString();
+
+        const response = await axios.get(`${BOOKINGS_API_URL}?${query}`, {
+            headers: {
+                Authorization: `Bearer ${getToken()}`,
+            },
+        });
+        return response.data;
+    } catch (error) {
+        throw error;
+    }
+}
