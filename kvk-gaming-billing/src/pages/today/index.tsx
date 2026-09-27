@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { createPortal } from "react-dom";
 import {
   CalendarClock,
+  ChevronDown,
   Clock,
   Eye,
   Gamepad2,
@@ -354,69 +355,53 @@ export default function Today() {
         {/* Schedule List */}
         <section className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
           <div className="flex flex-col gap-3 border-b border-slate-200 bg-slate-50/70 p-4 sm:px-6">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <h2 className="font-bold text-slate-900">Guest Schedule</h2>
-                <p className="text-xs text-slate-500">
-                  Station time, guest details, and payment for each confirmed
-                  booking today.
-                </p>
+            <div>
+              <h2 className="font-bold text-slate-900">Guest Schedule</h2>
+              <p className="text-xs text-slate-500">
+                Station time, guest details, and payment for each confirmed
+                booking today.
+              </p>
+            </div>
+
+            <div className="flex flex-nowrap items-center gap-2.5 overflow-x-auto pb-0.5">
+              <div className="flex h-10 min-w-[200px] flex-1 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 shadow-sm transition hover:border-red-300 focus-within:border-red-400 focus-within:ring-4 focus-within:ring-red-50">
+                <Search size={16} className="shrink-0 text-slate-400" />
+                <input
+                  value={searchTerm}
+                  onChange={(event) => setSearchTerm(event.target.value)}
+                  placeholder="Search by name or phone..."
+                  className="w-full text-sm outline-none placeholder:text-slate-400"
+                />
               </div>
 
-              <div className="flex flex-wrap items-center gap-2.5">
-                <div className="flex h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 shadow-sm">
-                  <Search size={16} className="text-slate-400" />
-                  <input
-                    value={searchTerm}
-                    onChange={(event) => setSearchTerm(event.target.value)}
-                    placeholder="Search by name or phone..."
-                    className="w-48 text-sm outline-none placeholder:text-slate-400 sm:w-64"
-                  />
-                </div>
+              <FilterSelect
+                icon={<SlidersHorizontal size={15} />}
+                value={selectedCategoryId}
+                onChange={setSelectedCategoryId}
+              >
+                <option value="">All Categories</option>
+                {categories.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.name}
+                  </option>
+                ))}
+              </FilterSelect>
 
-                <div className="flex h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 shadow-sm">
-                  <SlidersHorizontal size={15} className="text-slate-400" />
-                  <select
-                    value={selectedCategoryId}
-                    onChange={(event) =>
-                      setSelectedCategoryId(event.target.value)
-                    }
-                    className="bg-transparent text-sm text-slate-700 outline-none"
-                  >
-                    <option value="">All Categories</option>
-                    {categories.map((category) => (
-                      <option key={category.id} value={category.id}>
-                        {category.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="flex h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 shadow-sm">
-                  <Gamepad2 size={15} className="text-slate-400" />
-                  <select
-                    value={selectedStationId}
-                    onChange={(event) =>
-                      setSelectedStationId(event.target.value)
-                    }
-                    disabled={!selectedCategoryId || isLoadingStations}
-                    className="bg-transparent text-sm text-slate-700 outline-none disabled:text-slate-400"
-                  >
-                    <option value="">
-                      {!selectedCategoryId
-                        ? "All Stations"
-                        : isLoadingStations
-                          ? "Loading..."
-                          : "All Stations"}
-                    </option>
-                    {stations.map((station) => (
-                      <option key={station.id} value={station.id}>
-                        {station.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
+              <FilterSelect
+                icon={<Gamepad2 size={15} />}
+                value={selectedStationId}
+                onChange={setSelectedStationId}
+                disabled={!selectedCategoryId || isLoadingStations}
+              >
+                <option value="">
+                  {isLoadingStations ? "Loading..." : "All Stations"}
+                </option>
+                {stations.map((station) => (
+                  <option key={station.id} value={station.id}>
+                    {station.name}
+                  </option>
+                ))}
+              </FilterSelect>
             </div>
           </div>
 
@@ -581,6 +566,54 @@ function SummaryCard({
           <p className="text-xs text-slate-400 mt-0.5">{subtitle}</p>
         )}
       </div>
+    </div>
+  );
+}
+
+/* =========================================================
+   Filter Select
+   ========================================================= */
+
+function FilterSelect({
+  icon,
+  value,
+  onChange,
+  disabled,
+  children,
+}: {
+  icon: ReactNode;
+  value: string;
+  onChange: (value: string) => void;
+  disabled?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <div
+      className={`relative flex h-10 shrink-0 items-center gap-2 rounded-xl border pl-3 pr-8 shadow-sm transition ${
+        disabled
+          ? "border-slate-100 bg-slate-50"
+          : "border-slate-200 bg-white hover:border-red-300 focus-within:border-red-400 focus-within:ring-4 focus-within:ring-red-50"
+      }`}
+    >
+      <span className={disabled ? "text-slate-300" : "text-slate-400"}>
+        {icon}
+      </span>
+
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        disabled={disabled}
+        className="w-full cursor-pointer appearance-none bg-transparent text-sm text-slate-700 outline-none disabled:cursor-not-allowed disabled:text-slate-400"
+      >
+        {children}
+      </select>
+
+      <ChevronDown
+        size={14}
+        className={`pointer-events-none absolute right-3 ${
+          disabled ? "text-slate-300" : "text-slate-400"
+        }`}
+      />
     </div>
   );
 }
