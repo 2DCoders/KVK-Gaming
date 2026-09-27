@@ -176,7 +176,7 @@ export default function Sidebar({ isOpen, isMobile, onClose }: SidebarProps) {
               {!collapsed && (
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-gray-900 truncate">
-                    KVK Badminton System
+                    KVK Gaming System
                   </p>
                   <p className="text-xs text-gray-500">Cashier Panel</p>
                 </div>
