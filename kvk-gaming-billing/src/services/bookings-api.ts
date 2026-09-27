@@ -42,6 +42,8 @@ export const getGamingBookingsList = async (params: {
     fromDate?: string;
     toDate?: string;
     status?: number;
+    gamingCategoryId?: string;
+    gamingStationId?: string;
     searchTerm?: string;
     pageNumber?: number;
     pageSize?: number;
