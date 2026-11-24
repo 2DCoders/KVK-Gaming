@@ -31,8 +31,23 @@ import { getNextWorkingDays } from "@/services/holidays-api";
 import { createPortal } from "react-dom";
 import { getAdditionalPurchasesByCategory } from "@/services/gaming-additional-api";
 
+function slotTiming(date: string, slot: { startTime: string; endTime: string }, now: number) {
+  const start = Date.parse(`${date}T${slot.startTime}+05:30`);
+  const end = Date.parse(`${date}T${slot.endTime}+05:30`);
+  const endsAt = end <= start ? end + 86_400_000 : end;
+  if (now >= endsAt) return { ended: true, label: "Slot ended" };
+  if (now <= start) return { ended: false, label: "" };
+  const minutes = Math.floor((now - start) / 60_000);
+  return { ended: false, label: `Already elapsed: ${minutes > 0 ? `${minutes} min` : "less than 1 min"}` };
+}
+
 export default function Bookings() {
   const [selectedDate, setSelectedDate] = useState(0);
+  const [now, setNow] = useState(Date.now);
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 10_000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   const [categories, setCategories] = useState<any[]>([]);
   const [selectedStation, setSelectedStation] = useState("");
@@ -49,7 +64,8 @@ export default function Bookings() {
 
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
   const [isWalkIn, setIsWalkIn] = useState(false);
-  const isToday = days[selectedDate]?.date.split("T")[0] ===
+  const bookingDate = days[selectedDate]?.date.split("T")[0] ?? "";
+  const isToday = bookingDate ===
     new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Colombo", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
 
   // ---------------------------------------------------------
@@ -321,6 +337,10 @@ export default function Bookings() {
 
   const handleConfirmBooking = async () => {
     if (loading) return;
+    if (selectedSlotObjects.some((slot) => slotTiming(bookingDate, slot, Date.now()).ended)) {
+      alert("A selected slot has ended. Select an available slot again.");
+      return;
+    }
     if (!customerName.trim()) {
       alert("Customer name is required.");
       return;
@@ -412,6 +432,10 @@ export default function Bookings() {
   // ---------------------------------------------------------
 
   const handleBooking = async () => {
+    if (selectedSlotObjects.some((slot) => slotTiming(bookingDate, slot, Date.now()).ended)) {
+      alert("A selected slot has ended. Select an available slot again.");
+      return;
+    }
     if (!selectedGamingStation) {
       alert("Please select a gaming station.");
       return;
@@ -520,15 +544,6 @@ export default function Bookings() {
           date
         );
 
-      const now = new Date();
-
-      const bookingDate =
-        date.split("T")[0];
-
-      const isToday =
-        bookingDate ===
-        now.toISOString().split("T")[0];
-
       const mappedSlots = response.map(
         (slot: any) => {
           let status:
@@ -540,15 +555,6 @@ export default function Bookings() {
             status = "booked";
           } else if (slot.isBooked) {
             status = "booked";
-          } else if (isToday) {
-            const slotDateTime =
-              new Date(
-                `${bookingDate}T${slot.startTime}`
-              );
-
-            if (slotDateTime <= now) {
-              status = "past";
-            }
           }
 
           return {
@@ -1136,18 +1142,18 @@ export default function Bookings() {
                         isSelected(slot.id);
 
                       const available =
-                        slot.status === "available";
+                        slot.status === "available" && !slotTiming(bookingDate, slot, now).ended;
 
                       const booked =
                         slot.status === "booked";
 
                       const past =
-                        slot.status === "past";
+                        !booked && !available;
 
                       return (
                         <button
                           key={slot.id}
-                          disabled={!available}
+                          disabled={!available && !selected}
                           onClick={() =>
                             toggleSlot(slot.id)
                           }
@@ -1533,6 +1539,12 @@ export default function Bookings() {
                 {/* Divider */}
 
                 <div className="my-5 border-t border-gray-100" />
+                {selectedSlotObjects.map((slot) => {
+                  const label = slotTiming(bookingDate, slot, now).label;
+                  return label && <p key={slot.id} className="mb-2 text-xs font-semibold text-amber-800">
+                    {formatTime(slot.startTime)}–{formatTime(slot.endTime)} · {label}
+                  </p>;
+                })}
 
                 {/* Price breakdown */}
 
@@ -2112,6 +2124,9 @@ export default function Bookings() {
                                   {slot.startTime}{" "}
                                   -{" "}
                                   {slot.endTime}
+                                  {slotTiming(bookingDate, slot, now).label && <span className="block font-semibold text-amber-800">
+                                    {slotTiming(bookingDate, slot, now).label}
+                                  </span>}
                                 </span>
 
                               </div>
