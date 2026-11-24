@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { isAxiosError } from "axios";
 import {
   Calendar,
+  FileCheck,
   ChevronRight,
   X,
   Gamepad2,
@@ -24,12 +25,16 @@ import { getSlotsAvailability } from "@/services/slots-api";
 import {
   confirmBooking,
   createWalkIn,
+  reserveCashierSlip,
   multiHoldBooking,
 } from "@/services/bookings-api";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { getNextWorkingDays } from "@/services/holidays-api";
 import { createPortal } from "react-dom";
 import { getAdditionalPurchasesByCategory } from "@/services/gaming-additional-api";
+import BookingsCalendar from "./bookings-calendar";
+
+const bookingAction = "inline-flex min-h-10 cursor-pointer items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600";
 
 function slotTiming(date: string, slot: { startTime: string; endTime: string }, now: number) {
   const start = Date.parse(`${date}T${slot.startTime}+05:30`);
@@ -63,6 +68,7 @@ export default function Bookings() {
   const [selectedSlots, setSelectedSlots] = useState<string[]>([]);
 
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [isWalkIn, setIsWalkIn] = useState(false);
   const bookingDate = days[selectedDate]?.date.split("T")[0] ?? "";
   const isToday = bookingDate ===
@@ -381,6 +387,11 @@ export default function Bookings() {
       const bookedSlotCount = holdIds.length;
       if (isWalkIn) {
         await createWalkIn({ holdIds, customerName: customerName.trim(), phoneNumber });
+      } else if (paymentType === 3) {
+        const hold = await reserveCashierSlip({ holdIds, customerName: customerName.trim(), phoneNumber,
+          expectedAmount: Number(totalAmount.toFixed(2)) });
+        navigate("/bookings/payment-slip-holds", { state: { holdId: hold.id } });
+        return;
       } else {
         await confirmBooking(bookingData);
       }
@@ -703,6 +714,8 @@ export default function Bookings() {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
+      {isCalendarOpen && <BookingsCalendar categories={categories} initialCategoryId={selectedStation}
+        onClose={() => setIsCalendarOpen(false)} />}
 
       {/* =====================================================
           PAGE HEADER
@@ -720,20 +733,20 @@ export default function Bookings() {
               </div>
 
               <div>
-                <div className="flex items-center gap-2">
-                  <h1 className="text-2xl font-bold tracking-tight text-gray-900">
-                    Gaming Booking
-                  </h1>
-
-                  <span className="hidden rounded-full bg-red-50 px-2.5 py-1 text-[11px] font-semibold text-red-600 sm:inline-flex">
-                    LIVE
-                  </span>
-                </div>
+                <h1 className="text-2xl font-bold tracking-tight text-gray-900">Gaming Booking</h1>
 
                 <p className="mt-1 text-sm text-gray-500">
                   Choose your gaming experience, station and
                   available time slots.
                 </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button type="button" aria-haspopup="dialog" onClick={() => setIsCalendarOpen(true)} className={bookingAction}>
+                    <Calendar size={15} className="text-red-700" aria-hidden="true" /> Bookings Calendar
+                  </button>
+                  <Link to="/bookings/payment-slip-holds" className={bookingAction}>
+                    <FileCheck size={15} className="text-red-700" aria-hidden="true" /> Payment Slip Holds
+                  </Link>
+                </div>
               </div>
 
             </div>
@@ -2037,6 +2050,13 @@ export default function Bookings() {
 
                 </div>}
 
+                {!isWalkIn && <label className="mt-3 flex cursor-pointer items-start gap-3 rounded-xl border border-gray-200 p-3 text-sm">
+                  <input type="radio" name="paymentType" checked={paymentType === 3} disabled={loading}
+                    onChange={() => setPaymentType(3)} />
+                  <span><span className="block font-semibold">Slip upload</span>
+                    Hold slots for up to 12 hours or until the first slot ends. Upload and approve the slip from Payment Slip Holds.
+                  </span>
+                </label>}
                 {/* Booking Summary */}
 
                 <div className="mt-6 border-t border-gray-100 pt-6">
@@ -2300,7 +2320,7 @@ export default function Bookings() {
                   "
                 >
                   <Check size={16} strokeWidth={3} />
-                  {isWalkIn ? "Reserve walk-in" : "Confirm Booking"}
+                  {isWalkIn ? "Reserve walk-in" : paymentType === 3 ? "Hold slots for slip" : "Confirm Booking"}
                 </button>
 
               </div>

@@ -9,6 +9,7 @@ import PS5Settings from "./pages/ps5-settings"
 import MovieRoomsSettings from "./pages/movie-rooms-settings"
 import PoolSettings from "./pages/pool-settings"
 import Bookings from "./pages/bookings"
+import PaymentSlipHolds from "./pages/bookings/payment-slip-holds"
 import Today from "./pages/today"
 import Games from "./pages/games"
 
@@ -23,6 +24,7 @@ function App() {
       <Route element={<AdminLayout><MovieRoomsSettings /></AdminLayout>} path="/movie-rooms-settings" />
       <Route element={<AdminLayout><PoolSettings /></AdminLayout>} path="/pool-settings" />
       <Route element={<AdminLayout><Bookings /></AdminLayout>} path="/bookings" />
+      <Route element={<AdminLayout><PaymentSlipHolds /></AdminLayout>} path="/bookings/payment-slip-holds" />
       <Route element={<AdminLayout><Today /></AdminLayout>} path="/today" />
       <Route element={<AdminLayout><Games /></AdminLayout>} path="/games" />
       <Route element={<AdminLayout><Payments /></AdminLayout>} path="/payments" />

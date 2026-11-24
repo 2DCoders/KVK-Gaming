@@ -12,6 +12,36 @@ const getToken = () => {
   return cashier ? cashier.token : null;
 };
 
+export type CashierSlip = {
+    id: string; customerName: string; phoneNumber: string; amount: number;
+    paymentDueUtc: string; slotCount: number; revision: string | null; approved: boolean; smsSent: boolean;
+};
+
+const slipUrl = `${BOOKINGS_API_URL}cashier-slips`;
+const slipAuth = () => ({ headers: { Authorization: `Bearer ${getToken()}` } });
+
+export async function reserveCashierSlip(payload: { holdIds: string[]; customerName: string; phoneNumber: string; expectedAmount: number }) {
+    return (await axios.post<CashierSlip>(slipUrl, payload, slipAuth())).data;
+}
+
+export async function getCashierSlips(signal: AbortSignal) {
+    return (await axios.get<CashierSlip[]>(slipUrl, { ...slipAuth(), signal })).data;
+}
+
+export async function uploadCashierSlip(id: string, file: File) {
+    const body = new FormData();
+    body.append("slip", file);
+    return (await axios.post<CashierSlip>(`${slipUrl}/${id}/slip`, body, slipAuth())).data;
+}
+
+export async function downloadCashierSlip(id: string) {
+    return (await axios.get<Blob>(`${slipUrl}/${id}/slip`, { ...slipAuth(), responseType: "blob" })).data;
+}
+
+export async function approveCashierSlip(id: string, revision: string) {
+    return (await axios.post<CashierSlip>(`${slipUrl}/${id}/approve/${revision}`, null, slipAuth())).data;
+}
+
 export const multiHoldBooking = async (bookingData: any) => {
     try {
         const response = await axios.post(`${BOOKINGS_API_URL}multi-hold`, bookingData, {
@@ -62,7 +92,7 @@ export const getGamingBookingsList = async (params: {
     searchTerm?: string;
     pageNumber?: number;
     pageSize?: number;
-}) => {
+}, signal?: AbortSignal) => {
     try {
         const query = new URLSearchParams(
             Object.entries(params).reduce((acc, [key, value]) => {
@@ -74,6 +104,7 @@ export const getGamingBookingsList = async (params: {
         ).toString();
 
         const response = await axios.get(`${BOOKINGS_API_URL}?${query}`, {
+            signal,
             headers: {
                 Authorization: `Bearer ${getToken()}`,
             },

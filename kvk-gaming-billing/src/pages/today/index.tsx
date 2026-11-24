@@ -150,7 +150,7 @@ export default function Today() {
   };
 
   const paymentLabel = (paymentType: number) =>
-    paymentType === 2 ? "Card" : "Cash";
+    paymentType === 3 ? "Bank transfer" : paymentType === 2 ? "Card" : "Cash";
 
   /* =========================================================
      Category / Station Filter Options
