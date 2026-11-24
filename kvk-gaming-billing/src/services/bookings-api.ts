@@ -38,10 +38,25 @@ export const confirmBooking = async (bookingData: any) => {
     }
 }
 
+export const WALK_IN_PENDING_PAYMENT = 6;
+
+export async function createWalkIn(booking: { holdIds: string[]; customerName: string; phoneNumber: string }) {
+    await axios.post(`${BOOKINGS_API_URL}walk-ins`, booking, {
+        headers: { Authorization: `Bearer ${getToken()}` },
+    });
+}
+
+export async function payWalkIn(walkInId: string, paymentType: 1 | 2) {
+    await axios.post(`${BOOKINGS_API_URL}walk-ins/${walkInId}/pay`, { paymentType }, {
+        headers: { Authorization: `Bearer ${getToken()}` },
+    });
+}
+
 export const getGamingBookingsList = async (params: {
     fromDate?: string;
     toDate?: string;
     status?: number;
+    includePendingWalkIns?: boolean;
     gamingCategoryId?: string;
     gamingStationId?: string;
     searchTerm?: string;

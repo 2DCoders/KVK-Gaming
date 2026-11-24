@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { isAxiosError } from "axios";
 import {
   Calendar,
   ChevronRight,
@@ -22,6 +23,7 @@ import { getGamingStationsByCategory } from "@/services/gaming-stations-api";
 import { getSlotsAvailability } from "@/services/slots-api";
 import {
   confirmBooking,
+  createWalkIn,
   multiHoldBooking,
 } from "@/services/bookings-api";
 import { useNavigate } from "react-router-dom";
@@ -46,6 +48,9 @@ export default function Bookings() {
   const [selectedSlots, setSelectedSlots] = useState<string[]>([]);
 
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
+  const [isWalkIn, setIsWalkIn] = useState(false);
+  const isToday = days[selectedDate]?.date.split("T")[0] ===
+    new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Colombo", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
 
   // ---------------------------------------------------------
   // Loading
@@ -315,6 +320,7 @@ export default function Bookings() {
   // ---------------------------------------------------------
 
   const handleConfirmBooking = async () => {
+    if (loading) return;
     if (!customerName.trim()) {
       alert("Customer name is required.");
       return;
@@ -352,21 +358,12 @@ export default function Bookings() {
         },
       };
 
-      console.log(
-        "Confirm Booking Request:",
-        bookingData
-      );
-
       const bookedSlotCount = holdIds.length;
-
-      const response = await confirmBooking(
-        bookingData
-      );
-
-      console.log(
-        "Confirm Booking Response:",
-        response
-      );
+      if (isWalkIn) {
+        await createWalkIn({ holdIds, customerName: customerName.trim(), phoneNumber });
+      } else {
+        await confirmBooking(bookingData);
+      }
 
       setIsBookingModalOpen(false);
 
@@ -391,7 +388,7 @@ export default function Bookings() {
       }
 
       alert(
-        bookedSlotCount > 1
+        isWalkIn ? "Walk-in reserved. Collect payment from Today's Schedule." : bookedSlotCount > 1
           ? "Multiple bookings confirmed successfully."
           : "Booking confirmed successfully."
       );
@@ -402,7 +399,8 @@ export default function Bookings() {
       );
 
       alert(
-        "Unable to confirm the booking. Please try again."
+        (isAxiosError(error) && (error.response?.data?.errors?.[0] || error.response?.data?.message))
+          || "Unable to save the booking. Please try again."
       );
     } finally {
       setLoading(false);
@@ -435,26 +433,21 @@ export default function Bookings() {
       const bookingDate =
         days[selectedDate].date.split("T")[0];
 
-      const bookings = selectedSlots.map((slotId) => ({
+      const purchases = additionalPurchases
+        .filter((item) => (selectedAdditionalPurchases[item.id] || 0) > 0)
+        .map((item) => ({ additionalPurchaseId: item.id, quantity: selectedAdditionalPurchases[item.id] }));
+      const bookings = selectedSlots.map((slotId, index) => ({
         gamingCategoryId: selectedStation,
         gamingStationId: selectedGamingStation,
         gamingSlotId: slotId,
         bookingDate,
+        additionalPurchases: index === 0 ? purchases : undefined,
       }));
 
       const request = {
         bookings,
         totalAmount,
         paymentTypes: 0,
-        additionalPurchases: additionalPurchases
-          .filter(
-            (item) =>
-              (selectedAdditionalPurchases[item.id] || 0) > 0
-          )
-          .map((item) => ({
-            additionalPurchaseId: item.id,
-            quantity: selectedAdditionalPurchases[item.id],
-          })),
       };
 
       console.log(
@@ -494,6 +487,7 @@ export default function Bookings() {
       setPhoneNumber("");
       setPaymentType(1);
 
+      setIsWalkIn(false);
       setIsBookingModalOpen(true);
     } catch (error) {
       console.error(
@@ -1861,8 +1855,15 @@ export default function Bookings() {
                 </div>
 
                 {/* Payment */}
-
-                <div className="mt-6 border-t border-gray-100 pt-6">
+                {isToday && <label className="mt-6 flex cursor-pointer items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm">
+                  <input type="checkbox" checked={isWalkIn} disabled={loading}
+                    onChange={(event) => setIsWalkIn(event.target.checked)} />
+                  <span>
+                    <span className="block font-semibold text-amber-950">Walk-in · Pay after playing</span>
+                    <span className="text-amber-800">Reserve now and collect payment from Today’s Schedule.</span>
+                  </span>
+                </label>}
+                {!isWalkIn && <div className="mt-6 border-t border-gray-100 pt-6">
 
                   <div className="mb-4">
 
@@ -2022,7 +2023,7 @@ export default function Bookings() {
 
                   </div>
 
-                </div>
+                </div>}
 
                 {/* Booking Summary */}
 
@@ -2284,7 +2285,7 @@ export default function Bookings() {
                   "
                 >
                   <Check size={16} strokeWidth={3} />
-                  Confirm Booking
+                  {isWalkIn ? "Reserve walk-in" : "Confirm Booking"}
                 </button>
 
               </div>

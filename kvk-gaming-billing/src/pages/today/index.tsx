@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { isAxiosError } from "axios";
 import type { ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
@@ -19,7 +20,7 @@ import {
   Users,
   X,
 } from "lucide-react";
-import { getGamingBookingsList } from "@/services/bookings-api";
+import { getGamingBookingsList, payWalkIn, WALK_IN_PENDING_PAYMENT } from "@/services/bookings-api";
 import { getCategories } from "@/services/categories-api";
 import { getGamingStationsByCategory } from "@/services/gaming-stations-api";
 
@@ -50,6 +51,7 @@ type GamingBookingRow = {
   customerPhone: string;
   amount: number;
   status: number;
+  walkInId?: string | null;
   createdAt: string;
   paymentType: number;
   additionalPurchases?: AdditionalPurchaseLine[];
@@ -75,7 +77,9 @@ const CONFIRMED_STATUS = 2;
 
 export default function Today() {
   const today = new Date();
-  const todayDate = today.toISOString().split("T")[0];
+  const todayDate = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Colombo", year: "numeric", month: "2-digit", day: "2-digit",
+  }).format(today);
 
   const navigate = useNavigate();
 
@@ -92,6 +96,7 @@ export default function Today() {
   const [bookings, setBookings] = useState<GamingBookingRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
+  const [paymentNotice, setPaymentNotice] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [now, setNow] = useState(new Date());
 
@@ -211,16 +216,23 @@ export default function Today() {
       setIsLoading(true);
       setLoadError("");
 
-      const response = await getGamingBookingsList({
+      const pageSize = 500;
+      const filters = {
         fromDate: todayDate,
         toDate: todayDate,
         status: CONFIRMED_STATUS,
+        includePendingWalkIns: true,
         gamingCategoryId: selectedCategoryId || undefined,
         gamingStationId: selectedStationId || undefined,
-        pageSize: 500,
-      });
-
-      const rows: GamingBookingRow[] = Array.isArray(response) ? response : [];
+        pageSize,
+      };
+      const rows: GamingBookingRow[] = [];
+      for (let pageNumber = 1; ; pageNumber++) {
+        const response = await getGamingBookingsList({ ...filters, pageNumber });
+        if (!Array.isArray(response)) break;
+        rows.push(...response);
+        if (response.length < pageSize) break;
+      }
 
       rows.sort((a, b) => a.slotStartTime.localeCompare(b.slotStartTime));
 
@@ -278,7 +290,7 @@ export default function Today() {
     ).length;
 
     const totalRevenue = bookings.reduce(
-      (sum, booking) => sum + booking.amount,
+      (sum, booking) => booking.status === WALK_IN_PENDING_PAYMENT ? sum : sum + booking.amount,
       0,
     );
 
@@ -289,6 +301,18 @@ export default function Today() {
       totalRevenue,
     };
   }, [bookings, now]);
+
+  const pendingSlots = viewingBooking?.walkInId && viewingBooking.status === WALK_IN_PENDING_PAYMENT
+    ? bookings.filter((booking) => booking.walkInId === viewingBooking.walkInId && booking.status === WALK_IN_PENDING_PAYMENT)
+    : [];
+
+  async function recordPayment(walkInId: string, paymentType: 1 | 2) {
+    await payWalkIn(walkInId, paymentType);
+    setBookings((current) => current.map((booking) => booking.walkInId === walkInId
+      ? { ...booking, status: CONFIRMED_STATUS, paymentType } : booking));
+    setViewingBooking(null);
+    setPaymentNotice("Walk-in payment recorded.");
+  }
 
   return (
     <main className="min-h-screen bg-slate-50/60">
@@ -509,8 +533,9 @@ export default function Today() {
                       <p className="font-bold text-slate-900">
                         {formatPrice(booking.amount)}
                       </p>
-                      <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-medium text-slate-600">
-                        {paymentLabel(booking.paymentType)}
+                      <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium ${booking.status === WALK_IN_PENDING_PAYMENT ? "bg-amber-50 text-amber-800" : "bg-slate-100 text-slate-600"}`}>
+                        {booking.status === WALK_IN_PENDING_PAYMENT ? "Walk-in · Pending payment"
+                          : booking.walkInId ? `Walk-in · ${paymentLabel(booking.paymentType)}` : paymentLabel(booking.paymentType)}
                       </span>
                     </div>
 
@@ -519,8 +544,7 @@ export default function Today() {
                       onClick={() => setViewingBooking(booking)}
                       className="inline-flex h-9 shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 shadow-sm transition hover:border-red-900 hover:bg-red-50 hover:text-red-700 sm:self-center"
                     >
-                      <Eye size={14} />
-                      View
+                      {booking.status === WALK_IN_PENDING_PAYMENT ? "Take payment" : <><Eye size={14} /> View</>}
                     </button>
                   </div>
                 );
@@ -530,14 +554,18 @@ export default function Today() {
         </section>
       </div>
 
+      {paymentNotice && <p role="status" className="mx-auto mt-4 max-w-7xl rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{paymentNotice}</p>}
       {viewingBooking && (
         <BookingDetailModal
+          key={viewingBooking.id}
           booking={viewingBooking}
           status={getScheduleStatus(viewingBooking)}
           formatPrice={formatPrice}
           formatTime={formatTime}
           formatDateDisplay={formatDateDisplay}
           paymentLabel={paymentLabel}
+          pendingSlots={pendingSlots}
+          onPay={recordPayment}
           onClose={() => setViewingBooking(null)}
         />
       )}
@@ -671,6 +699,8 @@ function BookingDetailModal({
   formatTime,
   formatDateDisplay,
   paymentLabel,
+  pendingSlots,
+  onPay,
   onClose,
 }: {
   booking: GamingBookingRow;
@@ -679,19 +709,42 @@ function BookingDetailModal({
   formatTime: (time: string) => string;
   formatDateDisplay: (date: string) => string;
   paymentLabel: (paymentType: number) => string;
+  pendingSlots: GamingBookingRow[];
+  onPay: (walkInId: string, paymentType: 1 | 2) => Promise<void>;
   onClose: () => void;
 }) {
-  const purchases = booking.additionalPurchases ?? [];
+  const pending = booking.status === WALK_IN_PENDING_PAYMENT && !!booking.walkInId;
+  const [paymentType, setPaymentType] = useState<1 | 2>(1);
+  const [paying, setPaying] = useState(false);
+  const [paymentError, setPaymentError] = useState("");
+  const paymentInFlight = useRef(false);
+  const purchases = pending ? pendingSlots.flatMap((slot) => slot.additionalPurchases ?? []) : booking.additionalPurchases ?? [];
   const purchasesTotal = purchases.reduce(
     (sum, item) => sum + item.quantity * item.unitPrice,
     0,
   );
 
+  async function submitPayment() {
+    if (!booking.walkInId || paymentInFlight.current) return;
+    paymentInFlight.current = true;
+    setPaying(true);
+    setPaymentError("");
+    try {
+      await onPay(booking.walkInId, paymentType);
+    } catch (error) {
+      setPaymentError((isAxiosError(error) && (error.response?.data?.errors?.[0] || error.response?.data?.message))
+        || "Unable to record payment. Please try again.");
+    } finally {
+      paymentInFlight.current = false;
+      setPaying(false);
+    }
+  }
+
   return createPortal(
     <div
       className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm"
       onMouseDown={(event) => {
-        if (event.target === event.currentTarget) onClose();
+        if (!paying && event.target === event.currentTarget) onClose();
       }}
     >
       <div className="flex max-h-[92vh] w-full max-w-lg flex-col overflow-hidden rounded-3xl bg-white shadow-2xl">
@@ -702,7 +755,7 @@ function BookingDetailModal({
             </div>
             <div>
               <h2 className="text-lg font-bold text-slate-900">
-                Booking Details
+                {pending ? "Take walk-in payment" : "Booking Details"}
               </h2>
               <p className="text-xs text-slate-500">
                 {booking.bookingNumber}
@@ -713,6 +766,7 @@ function BookingDetailModal({
           <button
             type="button"
             onClick={onClose}
+            disabled={paying}
             className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100"
           >
             <X size={20} />
@@ -734,20 +788,19 @@ function BookingDetailModal({
               value={formatDateDisplay(booking.slotDate)}
             />
             <DetailRow
-              label="Time Slot"
-              value={`${formatTime(booking.slotStartTime)} - ${formatTime(
-                booking.slotEndTime,
-              )}`}
+              label={pending ? "Time Slots" : "Time Slot"}
+              value={(pending ? pendingSlots : [booking]).map((slot) =>
+                `${formatTime(slot.slotStartTime)} - ${formatTime(slot.slotEndTime)}`).join(", ")}
             />
             <DetailRow
               label="Payment Method"
-              value={paymentLabel(booking.paymentType)}
+              value={pending ? "Pending payment" : paymentLabel(booking.paymentType)}
             />
             <div className="h-px bg-slate-200" />
             <div className="flex items-center justify-between text-sm">
-              <span className="font-bold text-red-900">Slot Amount</span>
+              <span className="font-bold text-red-900">{pending ? "Total due (including add-ons)" : "Booking amount"}</span>
               <span className="text-base font-extrabold text-red-900">
-                {formatPrice(booking.amount)}
+                {formatPrice(pending ? pendingSlots.reduce((sum, slot) => sum + slot.amount, 0) : booking.amount)}
               </span>
             </div>
           </div>
@@ -798,10 +851,23 @@ function BookingDetailModal({
           </div>
         </div>
 
-        <div className="border-t border-slate-200 bg-slate-50 px-5 py-4 sm:px-6">
+        <div className="space-y-3 border-t border-slate-200 bg-slate-50 px-5 py-4 sm:px-6">
+          {pending && <>
+            <fieldset className="flex gap-4 text-sm" disabled={paying}>
+              <legend className="mb-2 font-semibold">Payment method</legend>
+              <label className="flex gap-2"><input type="radio" name="gaming-walk-in-payment" checked={paymentType === 1} onChange={() => setPaymentType(1)} /> Cash</label>
+              <label className="flex gap-2"><input type="radio" name="gaming-walk-in-payment" checked={paymentType === 2} onChange={() => setPaymentType(2)} /> Card</label>
+            </fieldset>
+            {paymentError && <p role="alert" className="text-sm text-red-700">{paymentError}</p>}
+            <button type="button" onClick={() => void submitPayment()} disabled={paying || pendingSlots.length === 0}
+              className="h-11 w-full rounded-xl bg-red-700 text-sm font-semibold text-white disabled:opacity-50">
+              {paying ? "Recording…" : "Record payment"}
+            </button>
+          </>}
           <button
             type="button"
             onClick={onClose}
+            disabled={paying}
             className="h-11 w-full cursor-pointer rounded-xl border border-slate-200 bg-white text-sm font-semibold text-slate-700 hover:bg-slate-100"
           >
             Close

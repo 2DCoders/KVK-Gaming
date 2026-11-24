@@ -90,34 +90,6 @@ export default function Sidebar({ isOpen, isMobile, onClose }: SidebarProps) {
 
   const navItems: NavItem[] = [
     {
-      id: "system-settings",
-      label: "System Settings",
-      icon: Settings,
-      path: "",
-      submenu: [
-        {
-          id: "pc-settings",
-          label: "PC Settings",
-          path: "/pc-settings",
-        },
-        {
-          id: "ps5-settings",
-          label: "PS5 Settings",
-          path: "/ps5-settings",
-        },
-        {
-          id: "pool-settings",
-          label: "Pool Settings",
-          path: "/pool-settings",
-        },
-        {
-          id: "movie-room-settings",
-          label: "Movie Room Settings",
-          path: "/movie-rooms-settings",
-        },
-      ],
-    },
-    {
       id: "games",
       label: "Games",
       icon: Gamepad2,
