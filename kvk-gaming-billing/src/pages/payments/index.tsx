@@ -29,11 +29,13 @@ const formatPaymentMethod = (value: unknown) => {
 
   if (methodValue === 1) return 'Cash';
   if (methodValue === 2) return 'Card';
+  if (methodValue === 3) return 'Bank transfer';
   if (methodValue === 3) return 'Online';
 
   const raw = String(value ?? '').trim().toLowerCase();
   if (raw === '1' || raw === 'cash') return 'Cash';
   if (raw === '2' || raw === 'card') return 'Card';
+  if (raw === '3' || raw === 'banktransfer' || raw === 'bank transfer') return 'Bank transfer';
   if (raw === '3' || raw === 'online' || raw === 'paypal') return 'Online';
 
   return 'Cash';

@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
+import { isAxiosError } from "axios";
 import {
   Calendar,
+  FileCheck,
   ChevronRight,
   X,
   Gamepad2,
@@ -22,15 +24,35 @@ import { getGamingStationsByCategory } from "@/services/gaming-stations-api";
 import { getSlotsAvailability } from "@/services/slots-api";
 import {
   confirmBooking,
+  createWalkIn,
+  reserveCashierSlip,
   multiHoldBooking,
 } from "@/services/bookings-api";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { getNextWorkingDays } from "@/services/holidays-api";
 import { createPortal } from "react-dom";
 import { getAdditionalPurchasesByCategory } from "@/services/gaming-additional-api";
+import BookingsCalendar from "./bookings-calendar";
+
+const bookingAction = "inline-flex min-h-10 cursor-pointer items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600";
+
+function slotTiming(date: string, slot: { startTime: string; endTime: string }, now: number) {
+  const start = Date.parse(`${date}T${slot.startTime}+05:30`);
+  const end = Date.parse(`${date}T${slot.endTime}+05:30`);
+  const endsAt = end <= start ? end + 86_400_000 : end;
+  if (now >= endsAt) return { ended: true, label: "Slot ended" };
+  if (now <= start) return { ended: false, label: "" };
+  const minutes = Math.floor((now - start) / 60_000);
+  return { ended: false, label: `Already elapsed: ${minutes > 0 ? `${minutes} min` : "less than 1 min"}` };
+}
 
 export default function Bookings() {
   const [selectedDate, setSelectedDate] = useState(0);
+  const [now, setNow] = useState(Date.now);
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 10_000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   const [categories, setCategories] = useState<any[]>([]);
   const [selectedStation, setSelectedStation] = useState("");
@@ -46,6 +68,11 @@ export default function Bookings() {
   const [selectedSlots, setSelectedSlots] = useState<string[]>([]);
 
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const [isWalkIn, setIsWalkIn] = useState(false);
+  const bookingDate = days[selectedDate]?.date.split("T")[0] ?? "";
+  const isToday = bookingDate ===
+    new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Colombo", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
 
   // ---------------------------------------------------------
   // Loading
@@ -315,6 +342,11 @@ export default function Bookings() {
   // ---------------------------------------------------------
 
   const handleConfirmBooking = async () => {
+    if (loading) return;
+    if (selectedSlotObjects.some((slot) => slotTiming(bookingDate, slot, Date.now()).ended)) {
+      alert("A selected slot has ended. Select an available slot again.");
+      return;
+    }
     if (!customerName.trim()) {
       alert("Customer name is required.");
       return;
@@ -352,21 +384,17 @@ export default function Bookings() {
         },
       };
 
-      console.log(
-        "Confirm Booking Request:",
-        bookingData
-      );
-
       const bookedSlotCount = holdIds.length;
-
-      const response = await confirmBooking(
-        bookingData
-      );
-
-      console.log(
-        "Confirm Booking Response:",
-        response
-      );
+      if (isWalkIn) {
+        await createWalkIn({ holdIds, customerName: customerName.trim(), phoneNumber });
+      } else if (paymentType === 3) {
+        const hold = await reserveCashierSlip({ holdIds, customerName: customerName.trim(), phoneNumber,
+          expectedAmount: Number(totalAmount.toFixed(2)) });
+        navigate("/bookings/payment-slip-holds", { state: { holdId: hold.id } });
+        return;
+      } else {
+        await confirmBooking(bookingData);
+      }
 
       setIsBookingModalOpen(false);
 
@@ -391,7 +419,7 @@ export default function Bookings() {
       }
 
       alert(
-        bookedSlotCount > 1
+        isWalkIn ? "Walk-in reserved. Collect payment from Today's Schedule." : bookedSlotCount > 1
           ? "Multiple bookings confirmed successfully."
           : "Booking confirmed successfully."
       );
@@ -402,7 +430,8 @@ export default function Bookings() {
       );
 
       alert(
-        "Unable to confirm the booking. Please try again."
+        (isAxiosError(error) && (error.response?.data?.errors?.[0] || error.response?.data?.message))
+          || "Unable to save the booking. Please try again."
       );
     } finally {
       setLoading(false);
@@ -414,6 +443,10 @@ export default function Bookings() {
   // ---------------------------------------------------------
 
   const handleBooking = async () => {
+    if (selectedSlotObjects.some((slot) => slotTiming(bookingDate, slot, Date.now()).ended)) {
+      alert("A selected slot has ended. Select an available slot again.");
+      return;
+    }
     if (!selectedGamingStation) {
       alert("Please select a gaming station.");
       return;
@@ -435,26 +468,21 @@ export default function Bookings() {
       const bookingDate =
         days[selectedDate].date.split("T")[0];
 
-      const bookings = selectedSlots.map((slotId) => ({
+      const purchases = additionalPurchases
+        .filter((item) => (selectedAdditionalPurchases[item.id] || 0) > 0)
+        .map((item) => ({ additionalPurchaseId: item.id, quantity: selectedAdditionalPurchases[item.id] }));
+      const bookings = selectedSlots.map((slotId, index) => ({
         gamingCategoryId: selectedStation,
         gamingStationId: selectedGamingStation,
         gamingSlotId: slotId,
         bookingDate,
+        additionalPurchases: index === 0 ? purchases : undefined,
       }));
 
       const request = {
         bookings,
         totalAmount,
         paymentTypes: 0,
-        additionalPurchases: additionalPurchases
-          .filter(
-            (item) =>
-              (selectedAdditionalPurchases[item.id] || 0) > 0
-          )
-          .map((item) => ({
-            additionalPurchaseId: item.id,
-            quantity: selectedAdditionalPurchases[item.id],
-          })),
       };
 
       console.log(
@@ -494,6 +522,7 @@ export default function Bookings() {
       setPhoneNumber("");
       setPaymentType(1);
 
+      setIsWalkIn(false);
       setIsBookingModalOpen(true);
     } catch (error) {
       console.error(
@@ -526,15 +555,6 @@ export default function Bookings() {
           date
         );
 
-      const now = new Date();
-
-      const bookingDate =
-        date.split("T")[0];
-
-      const isToday =
-        bookingDate ===
-        now.toISOString().split("T")[0];
-
       const mappedSlots = response.map(
         (slot: any) => {
           let status:
@@ -546,15 +566,6 @@ export default function Bookings() {
             status = "booked";
           } else if (slot.isBooked) {
             status = "booked";
-          } else if (isToday) {
-            const slotDateTime =
-              new Date(
-                `${bookingDate}T${slot.startTime}`
-              );
-
-            if (slotDateTime <= now) {
-              status = "past";
-            }
           }
 
           return {
@@ -703,6 +714,8 @@ export default function Bookings() {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
+      {isCalendarOpen && <BookingsCalendar categories={categories} initialCategoryId={selectedStation}
+        onClose={() => setIsCalendarOpen(false)} />}
 
       {/* =====================================================
           PAGE HEADER
@@ -720,20 +733,20 @@ export default function Bookings() {
               </div>
 
               <div>
-                <div className="flex items-center gap-2">
-                  <h1 className="text-2xl font-bold tracking-tight text-gray-900">
-                    Gaming Booking
-                  </h1>
-
-                  <span className="hidden rounded-full bg-red-50 px-2.5 py-1 text-[11px] font-semibold text-red-600 sm:inline-flex">
-                    LIVE
-                  </span>
-                </div>
+                <h1 className="text-2xl font-bold tracking-tight text-gray-900">Gaming Booking</h1>
 
                 <p className="mt-1 text-sm text-gray-500">
                   Choose your gaming experience, station and
                   available time slots.
                 </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button type="button" aria-haspopup="dialog" onClick={() => setIsCalendarOpen(true)} className={bookingAction}>
+                    <Calendar size={15} className="text-red-700" aria-hidden="true" /> Bookings Calendar
+                  </button>
+                  <Link to="/bookings/payment-slip-holds" className={bookingAction}>
+                    <FileCheck size={15} className="text-red-700" aria-hidden="true" /> Payment Slip Holds
+                  </Link>
+                </div>
               </div>
 
             </div>
@@ -1142,18 +1155,18 @@ export default function Bookings() {
                         isSelected(slot.id);
 
                       const available =
-                        slot.status === "available";
+                        slot.status === "available" && !slotTiming(bookingDate, slot, now).ended;
 
                       const booked =
                         slot.status === "booked";
 
                       const past =
-                        slot.status === "past";
+                        !booked && !available;
 
                       return (
                         <button
                           key={slot.id}
-                          disabled={!available}
+                          disabled={!available && !selected}
                           onClick={() =>
                             toggleSlot(slot.id)
                           }
@@ -1539,6 +1552,12 @@ export default function Bookings() {
                 {/* Divider */}
 
                 <div className="my-5 border-t border-gray-100" />
+                {selectedSlotObjects.map((slot) => {
+                  const label = slotTiming(bookingDate, slot, now).label;
+                  return label && <p key={slot.id} className="mb-2 text-xs font-semibold text-amber-800">
+                    {formatTime(slot.startTime)}–{formatTime(slot.endTime)} · {label}
+                  </p>;
+                })}
 
                 {/* Price breakdown */}
 
@@ -1861,8 +1880,15 @@ export default function Bookings() {
                 </div>
 
                 {/* Payment */}
-
-                <div className="mt-6 border-t border-gray-100 pt-6">
+                {isToday && <label className="mt-6 flex cursor-pointer items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm">
+                  <input type="checkbox" checked={isWalkIn} disabled={loading}
+                    onChange={(event) => setIsWalkIn(event.target.checked)} />
+                  <span>
+                    <span className="block font-semibold text-amber-950">Walk-in · Pay after playing</span>
+                    <span className="text-amber-800">Reserve now and collect payment from Today’s Schedule.</span>
+                  </span>
+                </label>}
+                {!isWalkIn && <div className="mt-6 border-t border-gray-100 pt-6">
 
                   <div className="mb-4">
 
@@ -2022,8 +2048,15 @@ export default function Bookings() {
 
                   </div>
 
-                </div>
+                </div>}
 
+                {!isWalkIn && <label className="mt-3 flex cursor-pointer items-start gap-3 rounded-xl border border-gray-200 p-3 text-sm">
+                  <input type="radio" name="paymentType" checked={paymentType === 3} disabled={loading}
+                    onChange={() => setPaymentType(3)} />
+                  <span><span className="block font-semibold">Slip upload</span>
+                    Hold slots for up to 12 hours or until the first slot ends. Upload and approve the slip from Payment Slip Holds.
+                  </span>
+                </label>}
                 {/* Booking Summary */}
 
                 <div className="mt-6 border-t border-gray-100 pt-6">
@@ -2111,6 +2144,9 @@ export default function Bookings() {
                                   {slot.startTime}{" "}
                                   -{" "}
                                   {slot.endTime}
+                                  {slotTiming(bookingDate, slot, now).label && <span className="block font-semibold text-amber-800">
+                                    {slotTiming(bookingDate, slot, now).label}
+                                  </span>}
                                 </span>
 
                               </div>
@@ -2284,7 +2320,7 @@ export default function Bookings() {
                   "
                 >
                   <Check size={16} strokeWidth={3} />
-                  Confirm Booking
+                  {isWalkIn ? "Reserve walk-in" : paymentType === 3 ? "Hold slots for slip" : "Confirm Booking"}
                 </button>
 
               </div>
