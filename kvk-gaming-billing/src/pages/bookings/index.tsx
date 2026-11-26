@@ -33,6 +33,8 @@ import { getNextWorkingDays } from "@/services/holidays-api";
 import { createPortal } from "react-dom";
 import { getAdditionalPurchasesByCategory } from "@/services/gaming-additional-api";
 import BookingsCalendar from "./bookings-calendar";
+import BookingReceiptViewer from "@/components/booking-receipt-viewer";
+import { createBookingReceipt } from "@/services/booking-receipt";
 
 const bookingAction = "inline-flex min-h-10 cursor-pointer items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600";
 
@@ -79,6 +81,7 @@ export default function Bookings() {
   // ---------------------------------------------------------
 
   const [loading, setLoading] = useState(false);
+  const [receipt, setReceipt] = useState<{ pdf: Blob; filename: string } | null>(null);
 
   // ---------------------------------------------------------
   // Customer Details
@@ -385,6 +388,7 @@ export default function Bookings() {
       };
 
       const bookedSlotCount = holdIds.length;
+      let receiptFailed = false;
       if (isWalkIn) {
         await createWalkIn({ holdIds, customerName: customerName.trim(), phoneNumber });
       } else if (paymentType === 3) {
@@ -393,7 +397,33 @@ export default function Bookings() {
         navigate("/bookings/payment-slip-holds", { state: { holdId: hold.id } });
         return;
       } else {
-        await confirmBooking(bookingData);
+        const confirmedSlots = await confirmBooking(bookingData);
+        try {
+          if (confirmedSlots.length !== bookedSlotCount || !confirmedSlots.every(slot =>
+            slot.bookingNumber && Number.isFinite(slot.bookingAmount) && slot.paymentType === paymentType
+          )) {
+            throw new Error("Missing confirmed receipt details.");
+          }
+          const receiptSlots = confirmedSlots.map(slot => {
+            const station = gamingStations.find(item => item.id === slot.gamingStationId);
+            const bookedSlot = selectedSlotObjects.find(item => item.id === slot.gamingSlotId);
+            if (!station || !bookedSlot) throw new Error("Missing confirmed station or time.");
+            return {
+              bookingNumber: slot.bookingNumber,
+              gamingStationName: station.name,
+              slotDate: slot.bookingDate,
+              slotStartTime: bookedSlot.startTime,
+              slotEndTime: bookedSlot.endTime,
+              amount: slot.bookingAmount,
+            };
+          });
+          const { doc, filename } = createBookingReceipt(
+            bookingData.customerDetails.customerName, paymentType === 1 ? "Cash" : "Card", receiptSlots,
+          );
+          setReceipt({ pdf: doc.output("blob"), filename });
+        } catch {
+          receiptFailed = true;
+        }
       }
 
       setIsBookingModalOpen(false);
@@ -418,11 +448,11 @@ export default function Bookings() {
         );
       }
 
-      alert(
-        isWalkIn ? "Walk-in reserved. Collect payment from Today's Schedule." : bookedSlotCount > 1
-          ? "Multiple bookings confirmed successfully."
-          : "Booking confirmed successfully."
-      );
+      if (isWalkIn) {
+        alert("Walk-in reserved. Collect payment from Today's Schedule.");
+      } else if (receiptFailed) {
+        alert("Booking confirmed. The receipt could not be opened.");
+      }
     } catch (error) {
       console.error(
         "Error confirming booking:",
@@ -2357,6 +2387,7 @@ export default function Bookings() {
           document.body
         )}
 
+      {receipt && <BookingReceiptViewer {...receipt} onClose={() => setReceipt(null)} />}
     </div>
   );
 }
