@@ -7,6 +7,7 @@ import {
   CalendarClock,
   ChevronDown,
   Clock,
+  Download,
   Eye,
   Gamepad2,
   Hash,
@@ -23,6 +24,8 @@ import {
 import { getGamingBookingsList, payWalkIn, WALK_IN_PENDING_PAYMENT } from "@/services/bookings-api";
 import { getCategories } from "@/services/categories-api";
 import { getGamingStationsByCategory } from "@/services/gaming-stations-api";
+import BookingReceiptViewer from "@/components/booking-receipt-viewer";
+import { createBookingReceipt } from "@/services/booking-receipt";
 
 /* =========================================================
    Types
@@ -70,6 +73,8 @@ type StationOption = {
 type ScheduleStatus = "upcoming" | "ongoing" | "completed";
 
 const CONFIRMED_STATUS = 2;
+const isPaid = (booking: GamingBookingRow) =>
+  booking.status === CONFIRMED_STATUS && [1, 2, 3].includes(booking.paymentType);
 
 /* =========================================================
    Today's Schedule Page
@@ -97,6 +102,8 @@ export default function Today() {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [paymentNotice, setPaymentNotice] = useState("");
+  const [receiptError, setReceiptError] = useState("");
+  const [receipt, setReceipt] = useState<{ pdf: Blob; filename: string } | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [now, setNow] = useState(new Date());
 
@@ -306,12 +313,34 @@ export default function Today() {
     ? bookings.filter((booking) => booking.walkInId === viewingBooking.walkInId && booking.status === WALK_IN_PENDING_PAYMENT)
     : [];
 
+  function downloadReceipt(booking: GamingBookingRow) {
+    if (!isPaid(booking)) return;
+    setReceiptError("");
+    try {
+      const slots = booking.walkInId
+        ? bookings.filter(row => row.walkInId === booking.walkInId && isPaid(row))
+        : [booking];
+      const { doc, filename } = createBookingReceipt(booking.customerName, paymentLabel(booking.paymentType), slots);
+      doc.save(filename);
+    } catch {
+      setReceiptError("Unable to download the receipt. Please try again.");
+    }
+  }
+
   async function recordPayment(walkInId: string, paymentType: 1 | 2) {
     await payWalkIn(walkInId, paymentType);
     setBookings((current) => current.map((booking) => booking.walkInId === walkInId
       ? { ...booking, status: CONFIRMED_STATUS, paymentType } : booking));
     setViewingBooking(null);
     setPaymentNotice("Walk-in payment recorded.");
+    setReceiptError("");
+    try {
+      if (pendingSlots.length === 0) throw new Error("Missing walk-in slots.");
+      const { doc, filename } = createBookingReceipt(pendingSlots[0].customerName, paymentLabel(paymentType), pendingSlots);
+      setReceipt({ pdf: doc.output("blob"), filename });
+    } catch {
+      setReceiptError("The payment was recorded. Use Download receipt to try again.");
+    }
   }
 
   return (
@@ -539,13 +568,21 @@ export default function Today() {
                       </span>
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={() => setViewingBooking(booking)}
-                      className="inline-flex h-9 shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 shadow-sm transition hover:border-red-900 hover:bg-red-50 hover:text-red-700 sm:self-center"
-                    >
-                      {booking.status === WALK_IN_PENDING_PAYMENT ? "Take payment" : <><Eye size={14} /> View</>}
-                    </button>
+                    <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+                      <button
+                        type="button"
+                        onClick={() => setViewingBooking(booking)}
+                        className="inline-flex h-9 shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 shadow-sm transition hover:border-red-900 hover:bg-red-50 hover:text-red-700"
+                      >
+                        {booking.status === WALK_IN_PENDING_PAYMENT ? "Take payment" : <><Eye size={14} /> View</>}
+                      </button>
+                      {isPaid(booking) && (
+                        <button type="button" onClick={() => downloadReceipt(booking)}
+                          className="inline-flex h-9 cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 shadow-sm transition hover:border-red-900 hover:bg-red-50 hover:text-red-700">
+                          <Download size={14} /> Download receipt
+                        </button>
+                      )}
+                    </div>
                   </div>
                 );
               })}
@@ -555,6 +592,7 @@ export default function Today() {
       </div>
 
       {paymentNotice && <p role="status" className="mx-auto mt-4 max-w-7xl rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{paymentNotice}</p>}
+      {receiptError && <p role="alert" className="mx-auto mt-4 max-w-7xl rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{receiptError}</p>}
       {viewingBooking && (
         <BookingDetailModal
           key={viewingBooking.id}
@@ -569,6 +607,7 @@ export default function Today() {
           onClose={() => setViewingBooking(null)}
         />
       )}
+      {receipt && <BookingReceiptViewer {...receipt} onClose={() => setReceipt(null)} />}
     </main>
   );
 }

@@ -55,17 +55,28 @@ export const multiHoldBooking = async (bookingData: any) => {
     }
 }
 
-export const confirmBooking = async (bookingData: any) => {
-    try {
-        const response = await axios.post(`${BOOKINGS_API_URL}confirm-multi`, bookingData, {
-            headers: {
-                Authorization: `Bearer ${getToken()}`,
-            },
-        });
-        return response.data;
-    } catch (error) {
-        throw error;
-    }
+type ConfirmedGamingSlot = {
+    holdId: string;
+    bookingNumber: string;
+    bookingAmount: number;
+    paymentType: number;
+    gamingStationId: string;
+    gamingSlotId: string;
+    bookingDate: string;
+};
+
+export async function confirmBooking(bookingData: {
+    holdIds: string[];
+    paymentIntentId: null;
+    customerDetails: { customerName: string; phoneNumber: string; paymentType: number };
+}) {
+    const { data } = await axios.post<{
+        succeeded: boolean;
+        message: string;
+        additionalData?: { response?: ConfirmedGamingSlot[] };
+    }>(`${BOOKINGS_API_URL}confirm-multi`, bookingData, slipAuth());
+    if (!data.succeeded) throw new Error(data.message);
+    return data.additionalData?.response ?? [];
 }
 
 export const WALK_IN_PENDING_PAYMENT = 6;
